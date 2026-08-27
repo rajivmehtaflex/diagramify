@@ -141,7 +141,7 @@ expectFailure('zero component height rejected by schema', 'architecture',
 expectFailure('negative component width rejected by schema', 'architecture',
   (d) => { d.components[0].size = [-1, 60]; }, '/components/0/size/0');
 expectFailure('explainer-steps needs at least two steps', 'explainer-steps',
-  (d) => { d.steps = [d.steps[0]]; }, 'steps');
+  (d) => { d.steps = [d.steps[0]]; }, '/steps must NOT have fewer than 2 items {"limit":2}');
 expectFailure('explainer-steps unknown step type rejected', 'explainer-steps',
   (d) => { d.steps[0].type = 'not-a-real-kind'; }, '/steps/0/type');
 expectFailure('explainer-steps code block requires content', 'explainer-steps',
