@@ -79,6 +79,7 @@ const GOLDEN = [
   ['dataflow', 'product-analytics.dataflow.json', 'dataflow-product-analytics.html'],
   ['lifecycle', 'agent-run.lifecycle.json', 'lifecycle-agent-run.html'],
   ['architecture', 'web-app.architecture.json', 'web-app-rendered.html'],
+  ['explainer-steps', 'attention-mechanism.explainer-steps.json', 'explainer-steps-attention-mechanism.html'],
 ];
 
 for (const [mode, input, golden] of GOLDEN) {
@@ -139,6 +140,12 @@ expectFailure('zero component height rejected by schema', 'architecture',
   (d) => { d.components[0].size = [120, 0]; }, '/components/0/size/1');
 expectFailure('negative component width rejected by schema', 'architecture',
   (d) => { d.components[0].size = [-1, 60]; }, '/components/0/size/0');
+expectFailure('explainer-steps needs at least two steps', 'explainer-steps',
+  (d) => { d.steps = [d.steps[0]]; }, 'steps');
+expectFailure('explainer-steps unknown step type rejected', 'explainer-steps',
+  (d) => { d.steps[0].type = 'not-a-real-kind'; }, '/steps/0/type');
+expectFailure('explainer-steps code block requires content', 'explainer-steps',
+  (d) => { d.steps[0].code = { language: 'python' }; }, '/steps/0/code');
 
 // ---------------------------------------------------------------------------
 console.log('template freshness (architecture example must carry the current template)');

@@ -1317,6 +1317,7 @@ async function commandDoctor() {
     sequence: 'cache-miss-request.sequence.json',
     dataflow: 'product-analytics.dataflow.json',
     lifecycle: 'agent-run.lifecycle.json',
+    'explainer-steps': 'attention-mechanism.explainer-steps.json',
   };
 
   for (const type of TYPES) {
