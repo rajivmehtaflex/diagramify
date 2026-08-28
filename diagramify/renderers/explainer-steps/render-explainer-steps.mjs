@@ -274,7 +274,7 @@ function renderTldrBlock(sec) {
     ? `<text data-node-label="" x="${CARD_X + 80}" y="${sec.y + 24}" class="t-primary" font-size="11" font-weight="700">${esc(sec.title)}</text>`
     : '';
   return `        <!-- TL;DR Section -->
-        <g id="section-tldr" class="explainer-tldr">
+        <g id="section-${esc(sec.id || 'tldr')}" class="explainer-tldr" data-section-kind="tldr" data-section-number="" data-section-title="${esc(sec.title || 'TL;DR Takeaways')}" data-chapter-tag="concept">
           <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-mask"/>
           <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-database" stroke-width="1.5"/>
           <rect x="${CARD_X + 16}" y="${sec.y + 12}" width="48" height="18" rx="4" fill="rgba(167, 139, 250, 0.25)" stroke="#a78bfa" stroke-width="1"/>
@@ -306,8 +306,9 @@ function renderNarrativeBlock(sec) {
           <text data-detail="context" x="${CARD_X + 16}" y="${curY + 20}" class="t-cloud" font-size="10" font-weight="600" font-family="monospace">${esc(sec.formula)}</text>`;
   }
 
+  const rawSecId = sec.id || (sec.number ? 'narrative-' + sec.number.replace(/[^a-zA-Z0-9]/g, '') : 'narrative');
   return `        <!-- Narrative Section -->
-        <g id="section-${esc(sec.id || sec.number || 'narrative')}">
+        <g id="section-${esc(rawSecId)}" class="explainer-narrative" data-section-kind="narrative" data-section-number="${esc(sec.number || '')}" data-section-title="${esc(sec.title || 'Narrative')}" data-chapter-tag="concept">
           ${numBadge}
           ${paraMarkup}
           ${formulaMarkup}
@@ -455,8 +456,10 @@ function renderSimulatorBlock(sec) {
   const footerValue = sec.status_value || `${promptToks.length} elements loaded`;
   const totalSteps = widgetType === 'decode_kv' ? (genToks.length || promptToks.length) : promptToks.length;
 
-  return `        <!-- Interactive Simulator (${esc(widgetType)}) -->
-        <g id="section-simulator" class="explainer-simulator" data-widget="explainer-simulator"
+  return `        <!-- Interactive Stepper / Simulator -->
+        <g id="section-${esc(sec.id || 'simulator')}" class="explainer-simulator" data-widget="explainer-simulator"
+           data-section-kind="simulator" data-section-number="${esc(sec.number || '')}"
+           data-section-title="${esc(sec.title || 'Interactive Simulator')}" data-chapter-tag="lab"
            data-widget-type="${esc(widgetType)}"
            data-prompt-tokens="${esc(JSON.stringify(promptToks))}"
            data-gen-tokens="${esc(JSON.stringify(genToks))}">
@@ -559,7 +562,9 @@ function renderChartBlock(sec) {
   }
 
   return `        <!-- Complexity Chart -->
-        <g id="section-chart" class="explainer-chart">
+        <g id="section-${esc(sec.id || 'chart')}" class="explainer-chart" data-widget="complexity-chart"
+           data-section-kind="chart" data-section-number="${esc(sec.number || '')}"
+           data-section-title="${esc(sec.title || 'Complexity Curves')}" data-chapter-tag="math">
           <!-- Frame Background -->
           <rect x="${CARD_X}" y="${chartY}" width="${chartW}" height="${chartH}" rx="10" class="c-mask"/>
           <rect x="${CARD_X}" y="${chartY}" width="${chartW}" height="${chartH}" rx="10" class="c-external" stroke-width="1"/>
@@ -642,7 +647,9 @@ function renderCalculatorBlock(sec) {
     }).join('');
 
     return `        <!-- Generic Interactive Calculator -->
-        <g id="section-calculator" class="explainer-calculator" data-widget="cache-calculator"
+        <g id="section-${esc(sec.id || 'calculator')}" class="explainer-calculator" data-widget="cache-calculator"
+           data-section-kind="calculator" data-section-number="${esc(sec.number || '')}"
+           data-section-title="${esc(sec.title || 'Interactive Calculator')}" data-chapter-tag="math"
            data-inputs="${esc(JSON.stringify(inputs))}"
            data-outputs="${esc(JSON.stringify(outputs))}">
           ${numBadge}
@@ -675,7 +682,9 @@ function renderCalculatorBlock(sec) {
   ];
 
   return `        <!-- Interactive Cache Memory Calculator -->
-        <g id="section-calculator" class="explainer-calculator" data-widget="cache-calculator"
+        <g id="section-${esc(sec.id || 'calculator')}" class="explainer-calculator" data-widget="cache-calculator"
+           data-section-kind="calculator" data-section-number="${esc(sec.number || '')}"
+           data-section-title="${esc(sec.title || 'Cache Memory Calculator')}" data-chapter-tag="math"
            data-models="${esc(JSON.stringify(models))}">
           ${numBadge}
           ${descMarkup}
@@ -764,8 +773,10 @@ function renderGridCardsBlock(sec) {
           ${descLines}`;
   }).join('');
 
+  const rawSecId = sec.id || 'comparison';
   return `        <!-- Comparison Grid Section -->
-        <g id="section-grid-${esc(sec.id || 'comparison')}">
+        <g id="section-grid-${esc(rawSecId)}" class="explainer-grid-cards" data-section-kind="grid_cards"
+           data-section-number="${esc(sec.number || '')}" data-section-title="${esc(sec.title || 'Comparative Matrix')}" data-chapter-tag="concept">
           ${numBadge}
           ${descMarkup}
           ${cardsMarkup}

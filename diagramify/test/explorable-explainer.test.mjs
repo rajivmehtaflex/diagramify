@@ -45,6 +45,11 @@ test("explorable-steps renders KV Cache multi-section explorable explainer clean
   assert.match(svg, /with cache — linear/, "Must contain complexity chart with linear curve");
   assert.match(svg, /without cache — quadratic/, "Must contain complexity chart with quadratic curve");
   assert.match(svg, /Multi-Query &amp; Grouped-Query|Multi-Query & Grouped-Query/, "Must contain comparison grid cards");
+
+  // Verify TOC Outline and Progress Bar exist in viewer HTML
+  assert.ok(html.includes('id="explainer-toc"'), "Generated HTML must contain explainer-toc element");
+  assert.ok(html.includes('id="explainer-progress-bar"'), "Generated HTML must contain explainer progress bar");
+  assert.ok(html.includes('initExplainerToc'), "Generated HTML must contain initExplainerToc client runtime");
 });
 
 test("explorable-steps maintains backward compatibility with classic linear step rails", () => {
@@ -259,4 +264,9 @@ test("explorable-steps renders completely generic domain explainers (Distributed
   assert.match(svg, /Max Tolerable Crashed Nodes \(F\)/);
   assert.match(svg, /2 Nodes/);
   assert.match(svg, /A 5-node cluster can tolerate up to 2 concurrent node failures/);
+
+  // Verify semantic section attributes for TOC discovery
+  assert.match(svg, /data-section-title="Cluster election step simulator"/);
+  assert.match(svg, /data-section-title="Consensus throughput vs cluster size"/);
+  assert.match(svg, /data-section-title="Quorum sizing &amp; fault tolerance calculator|Quorum sizing & fault tolerance calculator"/);
 });

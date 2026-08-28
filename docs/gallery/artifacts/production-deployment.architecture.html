@@ -2846,6 +2846,129 @@
       padding: 0;
     }
 
+    /* =========================================================================
+       Explainer TOC & Outline Sidebar (Hybrid DOM Architecture)
+       ========================================================================= */
+    .explainer-toc {
+      margin-bottom: 1.25rem;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1.15rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .explainer-toc:hover {
+      border-color: color-mix(in srgb, var(--frontend-stroke) 40%, var(--panel-border));
+    }
+    .explainer-toc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.6rem;
+    }
+    .explainer-toc-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--frontend-stroke);
+      text-transform: uppercase;
+    }
+    .explainer-toc-progress {
+      flex: 1;
+      max-width: 140px;
+      height: 4px;
+      background: var(--panel-border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .explainer-toc-progress-bar {
+      width: 0%;
+      height: 100%;
+      background: var(--frontend-stroke);
+      transition: width 0.15s ease-out;
+    }
+    .explainer-toc-filters {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 0.65rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 60%, transparent);
+      overflow-x: auto;
+    }
+    .explainer-filter-btn {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      border-radius: 0.35rem;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .explainer-filter-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--frontend-stroke);
+      background: var(--toolbar-hover);
+    }
+    .explainer-filter-btn.active {
+      background: color-mix(in srgb, var(--frontend-stroke) 15%, transparent);
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+    .explainer-toc-list {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 0;
+      padding: 0;
+    }
+    .explainer-toc-item {
+      display: inline-flex;
+    }
+    .explainer-toc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 0.4rem;
+      background: color-mix(in srgb, var(--panel-border) 35%, transparent);
+      border: 1px solid transparent;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .explainer-toc-link:hover {
+      background: var(--toolbar-hover);
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+    .explainer-toc-item.active .explainer-toc-link {
+      background: color-mix(in srgb, var(--frontend-stroke) 18%, transparent);
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+      font-weight: 700;
+    }
+    .explainer-toc-item.hidden {
+      display: none !important;
+    }
+    .toc-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--frontend-stroke);
+    }
+    .toc-title {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -4993,6 +5116,23 @@
         <ol class="guided-view-chapters" id="guided-view-chapters"></ol>
       </nav>
     </div>
+
+    <!-- Explainer Outline & TOC Sidebar -->
+    <nav class="explainer-toc no-print" id="explainer-toc" hidden aria-label="Document Outline">
+      <div class="explainer-toc-header">
+        <span class="explainer-toc-eyebrow">DOCUMENT OUTLINE</span>
+        <div class="explainer-toc-progress" aria-hidden="true">
+          <div class="explainer-toc-progress-bar" id="explainer-progress-bar"></div>
+        </div>
+      </div>
+      <div class="explainer-toc-filters" id="explainer-toc-filters" role="group" aria-label="Chapter Filter">
+        <button class="explainer-filter-btn active" data-filter="all" type="button" aria-pressed="true">All</button>
+        <button class="explainer-filter-btn" data-filter="concept" type="button" aria-pressed="false">Concept</button>
+        <button class="explainer-filter-btn" data-filter="lab" type="button" aria-pressed="false">Lab</button>
+        <button class="explainer-filter-btn" data-filter="math" type="button" aria-pressed="false">Math</button>
+      </div>
+      <ol class="explainer-toc-list" id="explainer-toc-list"></ol>
+    </nav>
 
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
@@ -14978,9 +15118,106 @@
         recalc();
       }
 
+      function initExplainerToc() {
+        const toc = document.getElementById('explainer-toc');
+        if (!toc) return;
+        const svg = document.querySelector('svg[data-diagram-type="explainer-steps"]');
+        if (!svg) return;
+
+        const sectionNodes = Array.from(svg.querySelectorAll('g[id^="section-"]'));
+        if (!sectionNodes.length) return;
+
+        toc.hidden = false;
+        const list = document.getElementById('explainer-toc-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        const sections = sectionNodes.map((el, index) => {
+          const id = el.id;
+          const number = el.getAttribute('data-section-number') || ('§0' + (index + 1));
+          const title = el.getAttribute('data-section-title') || el.querySelector('text[data-node-label]')?.textContent || ('Section ' + (index + 1));
+          const kind = el.getAttribute('data-section-kind') || 'concept';
+          const chapterTag = el.getAttribute('data-chapter-tag') || (kind === 'simulator' ? 'lab' : (kind === 'calculator' || kind === 'chart' ? 'math' : 'concept'));
+          return { id, number, title, kind, chapterTag, el };
+        });
+
+        sections.forEach((sec) => {
+          const li = document.createElement('li');
+          li.className = 'explainer-toc-item';
+          li.dataset.sectionId = sec.id;
+          li.dataset.chapterTag = sec.chapterTag;
+          li.innerHTML = `<a href="#${sec.id}" class="explainer-toc-link">
+            <span class="toc-badge">${sec.number}</span>
+            <span class="toc-title">${sec.title}</span>
+          </a>`;
+
+          li.querySelector('a').addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetEl = document.getElementById(sec.id);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              history.pushState(null, '', '#' + sec.id);
+            }
+          });
+          list.appendChild(li);
+        });
+
+        // Filter tabs
+        const filterBtns = toc.querySelectorAll('.explainer-filter-btn');
+        filterBtns.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            filterBtns.forEach(b => {
+              b.classList.remove('active');
+              b.setAttribute('aria-pressed', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
+            const filter = btn.dataset.filter;
+            const items = list.querySelectorAll('.explainer-toc-item');
+            items.forEach((it) => {
+              if (filter === 'all' || it.dataset.chapterTag === filter) {
+                it.classList.remove('hidden');
+              } else {
+                it.classList.add('hidden');
+              }
+            });
+          });
+        });
+
+        // Progress & Active tracking
+        const progressBar = document.getElementById('explainer-progress-bar');
+        function updateProgress() {
+          const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+          if (docHeight > 0 && progressBar) {
+            const scrollPos = window.scrollY || window.pageYOffset;
+            const pct = Math.min(100, Math.max(0, (scrollPos / docHeight) * 100));
+            progressBar.style.width = pct + '%';
+          }
+        }
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        updateProgress();
+
+        // IntersectionObserver for active section highlight
+        if ('IntersectionObserver' in window) {
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const id = entry.target.id;
+                list.querySelectorAll('.explainer-toc-item').forEach((it) => {
+                  it.classList.toggle('active', it.dataset.sectionId === id);
+                });
+              }
+            });
+          }, { rootMargin: '-10% 0px -50% 0px' });
+
+          sectionNodes.forEach((el) => observer.observe(el));
+        }
+      }
+
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => { initSimulator(); initCalculator(); });
+        document.addEventListener('DOMContentLoaded', () => { initExplainerToc(); initSimulator(); initCalculator(); });
       } else {
+        initExplainerToc();
         initSimulator();
         initCalculator();
       }
