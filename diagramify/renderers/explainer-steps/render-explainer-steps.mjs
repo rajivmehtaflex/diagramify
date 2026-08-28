@@ -328,32 +328,34 @@ function renderSimulatorBlock(sec) {
   const boxY = curY;
   const boxH = 195;
 
-  const widgetType = sec.widget_type || (sec.title && /position|signal|rope/i.test(sec.title) ? 'position_signals' : (sec.generated_tokens ? 'decode_kv' : 'token_stream'));
-  const widgetTitle = sec.widget_title || (widgetType === 'position_signals' ? 'POSITION SIGNAL SIMULATOR' : widgetType === 'decode_kv' ? 'DECODE SIMULATOR' : 'INTERACTIVE SIMULATOR');
+  const widgetType = sec.widget_type || (sec.generated_tokens ? 'decode_kv' : 'generic_step');
+  const widgetTitle = sec.widget_title || (widgetType === 'decode_kv' ? 'DECODE SIMULATOR' : 'INTERACTIVE SIMULATOR');
 
-  const promptToks = sec.prompt_tokens || (widgetType === 'position_signals' ? ['The', 'cat', 'sat', 'on', 'the', 'mat'] : ['Explain', 'the', 'KV', 'cache', 'to', 'a', 'reader']);
+  const rawItems = sec.elements || sec.tokens;
+  const promptToks = sec.prompt_tokens || (rawItems ? rawItems.map(it => typeof it === 'string' ? it : it.text) : ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5']);
   const genToks = sec.generated_tokens || [];
 
   let tokensStripMarkup = '';
-  if (widgetType === 'position_signals' || sec.tokens) {
-    const tokensList = sec.tokens || promptToks.map((t, idx) => ({ text: t, index: idx, tag: `pos: ${idx}` }));
-    const totalChips = tokensList.length;
+  if (rawItems || widgetType !== 'decode_kv') {
+    const itemsList = rawItems || promptToks.map((t, idx) => ({ text: t, tag: `step ${idx + 1}` }));
+    const totalChips = itemsList.length;
     const chipGap = 8;
-    const chipWidth = Math.min(84, Math.floor((CARD_WIDTH - 48 - (totalChips - 1) * chipGap) / totalChips));
-    const chipsHtml = tokensList.map((tok, idx) => {
+    const chipWidth = Math.min(96, Math.floor((CARD_WIDTH - 48 - (totalChips - 1) * chipGap) / totalChips));
+    const chipsHtml = itemsList.map((it, idx) => {
+      const itemObj = typeof it === 'string' ? { text: it, tag: `step ${idx + 1}` } : it;
       const cx = CARD_X + 24 + idx * (chipWidth + chipGap);
       const isFirst = idx === 0;
       return `
             <g class="sim-token-chip" data-token-idx="${idx}" style="cursor: pointer;">
               <rect x="${cx}" y="${boxY + 46}" width="${chipWidth}" height="34" rx="6" class="c-mask"/>
               <rect x="${cx}" y="${boxY + 46}" width="${chipWidth}" height="34" rx="6" class="${isFirst ? 'c-frontend' : 'c-external'}" stroke-width="${isFirst ? '1.5' : '1'}"/>
-              <text x="${cx + chipWidth / 2}" y="${boxY + 60}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="middle">${esc(tok.text)}</text>
-              <text x="${cx + chipWidth / 2}" y="${boxY + 73}" class="t-dim" font-size="6.5" font-weight="600" text-anchor="middle">${esc(tok.tag || `pos: ${tok.index ?? idx}`)}</text>
+              <text x="${cx + chipWidth / 2}" y="${boxY + 60}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="middle">${esc(itemObj.text)}</text>
+              <text x="${cx + chipWidth / 2}" y="${boxY + 73}" class="t-dim" font-size="6.5" font-weight="600" text-anchor="middle">${esc(itemObj.tag || itemObj.detail || `idx: ${idx}`)}</text>
             </g>`;
     }).join('');
 
     tokensStripMarkup = `
-          <!-- Token Discrete Chips Strip -->
+          <!-- Token / Step Discrete Chips Strip -->
           <g class="sim-tokens-chips">
             ${chipsHtml}
           </g>`;
@@ -377,48 +379,20 @@ function renderSimulatorBlock(sec) {
     const cardGap = 16;
     statBoxesMarkup = sec.metrics.slice(0, 3).map((m, idx) => {
       const bx = CARD_X + 20 + idx * (cardW + cardGap);
-      const colorClass = m.color === 'cloud' ? 'c-cloud' : m.color === 'security' ? 'c-security' : idx === 2 ? 'c-security' : 'c-external';
-      const textClass = m.color === 'cloud' ? 't-cloud' : m.color === 'security' ? 't-security' : idx === 0 ? 't-frontend' : idx === 1 ? 't-cloud' : 't-security';
+      const colorClass = m.color === 'cloud' ? 'c-cloud' : m.color === 'security' ? 'c-security' : m.color === 'database' ? 'c-database' : idx === 2 ? 'c-security' : 'c-external';
+      const textClass = m.color === 'cloud' ? 't-cloud' : m.color === 'security' ? 't-security' : m.color === 'database' ? 't-database' : idx === 0 ? 't-frontend' : idx === 1 ? 't-cloud' : 't-security';
       return `
           <!-- Stat ${idx + 1} -->
           <g class="sim-stat-box">
             <rect x="${bx}" y="${boxY + 96}" width="${cardW}" height="64" rx="6" class="c-mask"/>
             <rect x="${bx}" y="${boxY + 96}" width="${cardW}" height="64" rx="6" class="${colorClass}" stroke-width="1"/>
             <text x="${bx + 12}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">${esc(m.label.toUpperCase())}</text>
-            <text data-sim-metric="${idx}" x="${bx + 12}" y="${boxY + 134}" class="${textClass}" font-size="15" font-weight="700">${esc(m.value)}</text>
+            <text data-sim-metric="${idx}" x="${bx + 12}" y="${boxY + 134}" class="${textClass}" font-size="14" font-weight="700">${esc(m.value)}</text>
             <text x="${bx + 12}" y="${boxY + 148}" class="t-muted" font-size="7.5">${esc(m.sublabel || '')}</text>
           </g>`;
     }).join('');
-  } else if (widgetType === 'position_signals') {
-    statBoxesMarkup = `
-          <!-- Stat 1: Active Position -->
-          <g class="sim-stat-box">
-            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
-            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
-            <text x="${CARD_X + 30}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">ACTIVE POSITION INDEX</text>
-            <text data-sim-pos="" x="${CARD_X + 30}" y="${boxY + 134}" class="t-frontend" font-size="16" font-weight="700">pos = 0</text>
-            <text x="${CARD_X + 30}" y="${boxY + 148}" class="t-muted" font-size="7.5">0 ≤ pos &lt; ${promptToks.length}</text>
-          </g>
-
-          <!-- Stat 2: Frequency -->
-          <g class="sim-stat-box">
-            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
-            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
-            <text x="${CARD_X + 232}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">SIGNAL FREQUENCY</text>
-            <text data-sim-freq="" x="${CARD_X + 232}" y="${boxY + 134}" class="t-cloud" font-size="14" font-weight="700">ω_0 = 1.000</text>
-            <text x="${CARD_X + 232}" y="${boxY + 148}" class="t-muted" font-size="7.5">ω_i = 10000^(-2i/d)</text>
-          </g>
-
-          <!-- Stat 3: Geometry -->
-          <g class="sim-stat-box">
-            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-mask"/>
-            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-database" stroke-width="1"/>
-            <text x="${CARD_X + 434}" y="${boxY + 112}" class="t-database" font-size="7" font-weight="700" letter-spacing="0.5">VECTOR GEOMETRY</text>
-            <text data-sim-geom="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-database" font-size="14" font-weight="700">Orthogonal</text>
-            <text x="${CARD_X + 434}" y="${boxY + 148}" class="t-muted" font-size="7.5">preserves relative distance</text>
-          </g>`;
-  } else {
-    // Default KV decode
+  } else if (widgetType === 'decode_kv') {
+    // KV decode fallback
     statBoxesMarkup = `
           <!-- Stat 1: With Cache -->
           <g class="sim-stat-box">
@@ -446,11 +420,40 @@ function renderSimulatorBlock(sec) {
             <text data-sim-wasted="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-security" font-size="16" font-weight="700">1.0×</text>
             <text x="${CARD_X + 482}" y="${boxY + 134}" class="t-muted" font-size="8">without cache vs with</text>
           </g>`;
+  } else {
+    // Default generic metrics
+    statBoxesMarkup = `
+          <!-- Stat 1: Current Step -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 30}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">CURRENT STEP</text>
+            <text data-sim-pos="" x="${CARD_X + 30}" y="${boxY + 134}" class="t-frontend" font-size="16" font-weight="700">Step 1</text>
+            <text x="${CARD_X + 30}" y="${boxY + 148}" class="t-muted" font-size="7.5">Initial sequence state</text>
+          </g>
+
+          <!-- Stat 2: Progress -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 232}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">EXECUTION STATE</text>
+            <text data-sim-freq="" x="${CARD_X + 232}" y="${boxY + 134}" class="t-cloud" font-size="14" font-weight="700">Active</text>
+            <text x="${CARD_X + 232}" y="${boxY + 148}" class="t-muted" font-size="7.5">1 of ${promptToks.length} stages</text>
+          </g>
+
+          <!-- Stat 3: Metric -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-database" stroke-width="1"/>
+            <text x="${CARD_X + 434}" y="${boxY + 112}" class="t-database" font-size="7" font-weight="700" letter-spacing="0.5">SYSTEM HEALTH</text>
+            <text data-sim-geom="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-database" font-size="14" font-weight="700">Optimal</text>
+            <text x="${CARD_X + 434}" y="${boxY + 148}" class="t-muted" font-size="7.5">No bottleneck detected</text>
+          </g>`;
   }
 
-  const footerLabel = sec.status_label || (widgetType === 'position_signals' ? 'Position encoding status' : 'Cache contents');
-  const footerValue = sec.status_value || (widgetType === 'position_signals' ? `${promptToks.length} position vectors attached` : `${promptToks.length} tokens stored`);
-  const totalSteps = widgetType === 'position_signals' ? promptToks.length : (genToks.length || promptToks.length);
+  const footerLabel = sec.status_label || 'Simulator status';
+  const footerValue = sec.status_value || `${promptToks.length} elements loaded`;
+  const totalSteps = widgetType === 'decode_kv' ? (genToks.length || promptToks.length) : promptToks.length;
 
   return `        <!-- Interactive Simulator (${esc(widgetType)}) -->
         <g id="section-simulator" class="explainer-simulator" data-widget="explainer-simulator"
@@ -499,10 +502,54 @@ function renderChartBlock(sec) {
   const plotW = chartW - 70;
   const plotH = 120;
 
-  // Render Quadratic Curve Path (orange/amber) and Linear Line Path (cyan/teal)
-  // Quadratic: (0, 0) -> (plotW, plotH)
-  const quadPath = `M ${plotX} ${plotY + plotH - 10} Q ${plotX + plotW * 0.5} ${plotY + plotH - 15} ${plotX + plotW} ${plotY + 10}`;
-  const linearPath = `M ${plotX} ${plotY + plotH - 10} L ${plotX + plotW} ${plotY + plotH - 35}`;
+  const yLabel = sec.y_label || 'cumulative ops / metric →';
+  const xLabel = sec.x_label || 'step / input size →';
+
+  // Supported curve types: constant, logarithmic, linear, quadratic, exponential
+  const curvesList = (Array.isArray(sec.curves) && sec.curves.length > 0)
+    ? sec.curves
+    : [
+        { label: 'with cache — linear', type: 'linear', color: '#22d3ee' },
+        { label: 'without cache — quadratic', type: 'quadratic', color: '#f97316' }
+      ];
+
+  const curveColors = ['#22d3ee', '#f97316', '#a78bfa', '#34d399', '#f43f5e'];
+
+  function getPathForType(type) {
+    switch (type) {
+      case 'constant':
+        return `M ${plotX} ${plotY + plotH - 30} L ${plotX + plotW} ${plotY + plotH - 30}`;
+      case 'logarithmic':
+        return `M ${plotX} ${plotY + plotH - 10} Q ${plotX + plotW * 0.25} ${plotY + 20} ${plotX + plotW} ${plotY + 15}`;
+      case 'linear':
+        return `M ${plotX} ${plotY + plotH - 10} L ${plotX + plotW} ${plotY + plotH - 35}`;
+      case 'quadratic':
+        return `M ${plotX} ${plotY + plotH - 10} Q ${plotX + plotW * 0.5} ${plotY + plotH - 15} ${plotX + plotW} ${plotY + 10}`;
+      case 'exponential':
+        return `M ${plotX} ${plotY + plotH - 10} Q ${plotX + plotW * 0.75} ${plotY + plotH - 15} ${plotX + plotW} ${plotY + 5}`;
+      default:
+        return `M ${plotX} ${plotY + plotH - 10} L ${plotX + plotW} ${plotY + 10}`;
+    }
+  }
+
+  const renderedCurvesSvg = curvesList.map((c, idx) => {
+    const strokeColor = c.color || curveColors[idx % curveColors.length];
+    const pathD = getPathForType(c.type);
+    const strokeDash = c.style === 'dashed' ? 'stroke-dasharray="4,4"' : '';
+    return `<path d="${pathD}" stroke="${strokeColor}" stroke-width="2.5" ${strokeDash} fill="none"/>`;
+  }).join('\n          ');
+
+  // Dynamic Legend
+  const totalCurves = curvesList.length;
+  const legendGap = Math.min(180, Math.floor(plotW / totalCurves));
+  const legendStartX = plotX + 10;
+  const legendMarkup = curvesList.map((c, idx) => {
+    const lx = legendStartX + idx * legendGap;
+    const strokeColor = c.color || curveColors[idx % curveColors.length];
+    return `
+          <circle cx="${lx}" cy="${chartY + chartH - 12}" r="3.5" fill="${strokeColor}"/>
+          <text x="${lx + 10}" y="${chartY + chartH - 9}" class="t-muted" font-size="7.5">${esc(c.label)}</text>`;
+  }).join('');
 
   let footerMarkup = '';
   if (sec.footerLines?.length) {
@@ -518,7 +565,7 @@ function renderChartBlock(sec) {
           <rect x="${CARD_X}" y="${chartY}" width="${chartW}" height="${chartH}" rx="10" class="c-external" stroke-width="1"/>
 
           <!-- Y-axis Label -->
-          <text transform="rotate(-90 ${CARD_X + 18} ${plotY + plotH / 2})" x="${CARD_X + 18}" y="${plotY + plotH / 2}" class="t-dim" font-size="7.5" text-anchor="middle">cumulative K,V ops →</text>
+          <text transform="rotate(-90 ${CARD_X + 18} ${plotY + plotH / 2})" x="${CARD_X + 18}" y="${plotY + plotH / 2}" class="t-dim" font-size="7.5" text-anchor="middle">${esc(yLabel)}</text>
 
           <!-- Grid Lines -->
           <line x1="${plotX}" y1="${plotY + plotH}" x2="${plotX + plotW}" y2="${plotY + plotH}" class="c-external" stroke-width="1"/>
@@ -526,17 +573,13 @@ function renderChartBlock(sec) {
           <line x1="${plotX}" y1="${plotY}" x2="${plotX + plotW}" y2="${plotY}" class="c-grid" stroke-width="0.8" stroke-dasharray="3,3"/>
 
           <!-- Curves -->
-          <path d="${linearPath}" class="a-emphasis" stroke="#22d3ee" stroke-width="2.5" fill="none"/>
-          <path d="${quadPath}" class="a-security" stroke="#f97316" stroke-width="2.5" fill="none"/>
+          ${renderedCurvesSvg}
 
           <!-- X-axis Label -->
-          <text x="${plotX + plotW / 2}" y="${plotY + plotH + 18}" class="t-dim" font-size="7.5" text-anchor="middle">decode step →</text>
+          <text x="${plotX + plotW / 2}" y="${plotY + plotH + 18}" class="t-dim" font-size="7.5" text-anchor="middle">${esc(xLabel)}</text>
 
           <!-- Legend -->
-          <circle cx="${plotX + plotW / 2 - 80}" cy="${chartY + chartH - 12}" r="3.5" fill="#22d3ee"/>
-          <text x="${plotX + plotW / 2 - 70}" y="${chartY + chartH - 9}" class="t-muted" font-size="7.5">with cache — linear</text>
-          <circle cx="${plotX + plotW / 2 + 30}" cy="${chartY + chartH - 12}" r="3.5" fill="#f97316"/>
-          <text x="${plotX + plotW / 2 + 40}" y="${chartY + chartH - 9}" class="t-muted" font-size="7.5">without cache — quadratic</text>
+          ${legendMarkup}
         </g>
         ${footerMarkup}`;
 }
@@ -544,8 +587,8 @@ function renderChartBlock(sec) {
 function renderCalculatorBlock(sec) {
   const numBadge = sec.number
     ? `<text data-detail="fine" x="${CARD_X}" y="${sec.y + 18}" class="t-frontend" font-size="11" font-weight="700">${esc(sec.number)}</text>
-       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "What's actually sitting in memory")}</text>`
-    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "What's actually sitting in memory")}</text>`;
+       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "Interactive Parametric Sizing")}</text>`
+    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "Interactive Parametric Sizing")}</text>`;
 
   let curY = sec.y + 36;
   const descMarkup = (sec.descLines || []).map((l, i) => `
@@ -563,6 +606,70 @@ function renderCalculatorBlock(sec) {
 
   const boxY = curY;
   const boxH = 215;
+  const widgetTitle = sec.widget_title || 'INTERACTIVE CALCULATOR';
+
+  // If generic inputs & outputs provided:
+  if (Array.isArray(sec.inputs) || Array.isArray(sec.outputs)) {
+    const inputs = sec.inputs || [
+      { label: "Input Parameter A", value: "Standard Setting" },
+      { label: "Scale Factor B", value: "1,024 units" }
+    ];
+    const outputs = sec.outputs || [
+      { label: "Primary Output Metric", value: "128 MB", highlight: true },
+      { label: "Secondary Constraint", value: "99.9% headroom", highlight: false }
+    ];
+    const summaryNote = sec.summary_note || sec.note || "Interactive sizing output based on configured parameters.";
+
+    // Render inputs grid
+    const inputRowsMarkup = inputs.slice(0, 4).map((inp, idx) => {
+      const col = idx % 2;
+      const row = Math.floor(idx / 2);
+      const ix = CARD_X + 20 + col * 310;
+      const iy = boxY + 48 + row * 44;
+      return `
+            <text x="${ix}" y="${iy}" class="t-muted" font-size="8" font-weight="600">${esc(inp.label)}</text>
+            <text x="${ix + 280}" y="${iy}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="end">${esc(String(inp.value))}</text>
+            <line x1="${ix}" y1="${iy + 14}" x2="${ix + 280}" y2="${iy + 14}" class="c-external" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="${ix + 140}" cy="${iy + 14}" r="5" fill="#22d3ee" stroke="#0f172a" stroke-width="1.5"/>`;
+    }).join('');
+
+    const outputsMarkup = outputs.slice(0, 3).map((out, idx) => {
+      const oy = boxY + 152 + idx * 18;
+      const textClass = out.highlight ? "t-frontend" : "t-primary";
+      return `
+            <text x="${CARD_X + 20}" y="${oy}" class="t-muted" font-size="8">${esc(out.label)}</text>
+            <text x="${CARD_X + CARD_WIDTH - 20}" y="${oy}" class="${textClass}" font-size="9" font-weight="700" text-anchor="end">${esc(String(out.value))}${out.unit ? ' ' + esc(out.unit) : ''}</text>`;
+    }).join('');
+
+    return `        <!-- Generic Interactive Calculator -->
+        <g id="section-calculator" class="explainer-calculator" data-widget="cache-calculator"
+           data-inputs="${esc(JSON.stringify(inputs))}"
+           data-outputs="${esc(JSON.stringify(outputs))}">
+          ${numBadge}
+          ${descMarkup}
+          ${formulaMarkup}
+
+          <!-- Calculator Frame -->
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-mask"/>
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-database" stroke-width="1.5"/>
+
+          <text data-detail="fine" x="${CARD_X + 20}" y="${boxY + 24}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1">${esc(widgetTitle)}</text>
+
+          <!-- Input Controls -->
+          <g class="calc-inputs">
+            ${inputRowsMarkup}
+          </g>
+
+          <!-- Outputs Strip -->
+          <g class="calc-results">
+            <line x1="${CARD_X + 20}" y1="${boxY + 136}" x2="${CARD_X + CARD_WIDTH - 20}" y2="${boxY + 136}" class="c-grid" stroke-width="0.8"/>
+            ${outputsMarkup}
+            <text data-calc-ratio-res="" x="${CARD_X + 20}" y="${boxY + 202}" class="t-dim" font-size="7.5">${esc(summaryNote)}</text>
+          </g>
+        </g>`;
+  }
+
+  // Legacy fallback for KV Cache model_options
   const models = sec.model_options || [
     { name: '7B — 32 layers, 32 heads', layers: 32, heads: 32, head_dim: 128, weights_gb: 13.0 }
   ];

@@ -14776,14 +14776,13 @@
           if (stepCounter) stepCounter.textContent = 'step ' + currentStep + ' / ' + totalSteps;
           const promptCount = promptTokens.length;
 
-          if (widgetType === 'position_signals') {
+          if (widgetType !== 'decode_kv') {
             const activeIdx = currentStep < promptCount ? currentStep : (promptCount - 1);
-            if (posDisplay) posDisplay.textContent = 'pos = ' + activeIdx;
-            const freq = (1 / Math.pow(10000, (2 * activeIdx) / 64)).toFixed(3);
-            if (freqDisplay) freqDisplay.textContent = 'ω_' + activeIdx + ' = ' + freq;
+            if (posDisplay) posDisplay.textContent = 'Step ' + (activeIdx + 1);
+            if (freqDisplay) freqDisplay.textContent = 'Stage ' + (activeIdx + 1) + ' / ' + totalSteps;
             if (cacheTokens) {
-              const activeWord = promptTokens[activeIdx] || ('token_' + activeIdx);
-              cacheTokens.textContent = 'Active: "' + activeWord + '" with position tag: ' + activeIdx;
+              const activeWord = promptTokens[activeIdx] || ('step_' + (activeIdx + 1));
+              cacheTokens.textContent = 'Active: "' + activeWord + '"';
             }
 
             tokenElements.forEach((el, idx) => {

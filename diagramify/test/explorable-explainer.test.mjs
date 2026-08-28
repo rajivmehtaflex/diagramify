@@ -87,8 +87,22 @@ test("explorable-steps normalizes tldr takeaways, prevents grid_cards multi-row 
         kind: "simulator",
         number: "§02",
         title: "See position signals vary",
-        widget_type: "position_signals",
-        prompt_tokens: ["The", "cat", "sat", "on", "the", "mat"]
+        widget_title: "POSITION SIGNAL SIMULATOR",
+        tokens: [
+          { text: "The", tag: "pos: 0" },
+          { text: "cat", tag: "pos: 1" },
+          { text: "sat", tag: "pos: 2" },
+          { text: "on", tag: "pos: 3" },
+          { text: "the", tag: "pos: 4" },
+          { text: "mat", tag: "pos: 5" }
+        ],
+        metrics: [
+          { label: "ACTIVE POSITION INDEX", value: "pos = 0", sublabel: "0 ≤ pos < 6", color: "frontend" },
+          { label: "SIGNAL FREQUENCY", value: "ω_0 = 1.000", sublabel: "ω_i = 10000^(-2i/d)", color: "cloud" },
+          { label: "VECTOR GEOMETRY", value: "Orthogonal", sublabel: "preserves relative distance", color: "database" }
+        ],
+        status_label: "Position encoding status",
+        status_value: "6 position vectors attached"
       },
       {
         kind: "grid_cards",
@@ -143,4 +157,106 @@ test("explorable-steps normalizes tldr takeaways, prevents grid_cards multi-row 
   assert.match(svg, /id="section-grid-comparison"/);
   assert.match(svg, /§04/);
   assert.match(svg, /Research grounding/);
+});
+
+test("explorable-steps renders completely generic domain explainers (Distributed Systems / Raft Consensus)", () => {
+  const raftSpec = {
+    schema_version: 1,
+    diagram_type: "explainer-steps",
+    meta: {
+      title: "Raft Consensus Protocol Internals",
+      topic_tags: ["DISTRIBUTED_SYSTEMS", "CONSENSUS", "RAFT", "FAULT_TOLERANCE"]
+    },
+    sections: [
+      {
+        kind: "tldr",
+        takeaways: [
+          "Raft breaks distributed consensus into Leader Election, Log Replication, and Safety.",
+          "Quorum majority (N/2 + 1) prevents split-brain transitions across network partitions."
+        ]
+      },
+      {
+        kind: "simulator",
+        number: "§01",
+        title: "Cluster election step simulator",
+        widget_title: "LEADER ELECTION SIMULATOR",
+        elements: [
+          { text: "Node A", tag: "Leader", detail: "Term 2" },
+          { text: "Node B", tag: "Follower", detail: "Voted A" },
+          { text: "Node C", tag: "Follower", detail: "Voted A" },
+          { text: "Node D", tag: "Candidate", detail: "Timeout" },
+          { text: "Node E", tag: "Follower", detail: "Heartbeat" }
+        ],
+        metrics: [
+          { label: "QUORUM STATUS", value: "3 / 5 Nodes", sublabel: "Majority quorum active", color: "frontend" },
+          { label: "CURRENT TERM", value: "Term 2", sublabel: "Stable election term", color: "cloud" },
+          { label: "HEARTBEAT RTT", value: "12 ms", sublabel: "Below election timeout", color: "database" }
+        ],
+        status_label: "Consensus State",
+        status_value: "Leader Node A active with 3/5 quorum"
+      },
+      {
+        kind: "chart",
+        number: "§02",
+        title: "Consensus throughput vs cluster size",
+        x_label: "Cluster nodes (N) →",
+        y_label: "Write Latency (ms) →",
+        curves: [
+          { label: "Raft Quorum O(log N)", type: "logarithmic", color: "#22d3ee" },
+          { label: "2-Phase Commit O(N)", type: "linear", color: "#f97316" }
+        ]
+      },
+      {
+        kind: "calculator",
+        number: "§03",
+        title: "Quorum sizing & fault tolerance calculator",
+        widget_title: "FAULT TOLERANCE CALCULATOR",
+        formula: "Quorum = floor(N / 2) + 1, Max Faulty Nodes F = floor((N - 1) / 2)",
+        inputs: [
+          { label: "Cluster Node Count (N)", value: "5 Nodes", sublabel: "Standard deployment" },
+          { label: "Heartbeat Interval", value: "50 ms", sublabel: "Leader heartbeat" }
+        ],
+        outputs: [
+          { label: "Required Quorum Majority", value: "3 Nodes", highlight: true },
+          { label: "Max Tolerable Crashed Nodes (F)", value: "2 Nodes", highlight: false }
+        ],
+        summary_note: "A 5-node cluster can tolerate up to 2 concurrent node failures without losing availability."
+      }
+    ]
+  };
+
+  const input = path.join(tmp, "raft-explainer.json");
+  fs.writeFileSync(input, JSON.stringify(raftSpec, null, 2), "utf8");
+  const output = path.join(tmp, "raft-explainer.html");
+  const res = run(["deliver", "explainer-steps", input, output, "--quality", "showcase", "--json"]);
+
+  assert.equal(res.status, 0, res.stderr);
+  const data = JSON.parse(res.stdout);
+  assert.equal(data.ok, true);
+
+  const html = fs.readFileSync(output, "utf8");
+  const { direct } = extractSvgs(html);
+  const svg = direct[0];
+
+  // Verify Simulator generic copy
+  assert.match(svg, /LEADER ELECTION SIMULATOR/);
+  assert.match(svg, /QUORUM STATUS/);
+  assert.match(svg, /3 \/ 5 Nodes/);
+  assert.match(svg, /Node A/);
+  assert.match(svg, /Leader Node A active with 3\/5 quorum/);
+
+  // Verify Chart generic copy & curves
+  assert.match(svg, /Cluster nodes \(N\) →/);
+  assert.match(svg, /Write Latency \(ms\) →/);
+  assert.match(svg, /Raft Quorum O\(log N\)/);
+  assert.match(svg, /2-Phase Commit O\(N\)/);
+
+  // Verify Calculator generic copy
+  assert.match(svg, /FAULT TOLERANCE CALCULATOR/);
+  assert.match(svg, /Cluster Node Count \(N\)/);
+  assert.match(svg, /Required Quorum Majority/);
+  assert.match(svg, /3 Nodes/);
+  assert.match(svg, /Max Tolerable Crashed Nodes \(F\)/);
+  assert.match(svg, /2 Nodes/);
+  assert.match(svg, /A 5-node cluster can tolerate up to 2 concurrent node failures/);
 });

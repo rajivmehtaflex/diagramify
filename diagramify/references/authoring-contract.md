@@ -156,6 +156,17 @@ Stages express transformation or custody. Rows separate parallel streams. Label 
 
 Main phases use columns `0..4`; event and terminal bands use columns `0..2`. A recoverable failure needs a real transition back to an active state. A card or guided view saying “retry” is not topology.
 
+### Explainer steps
+
+Explorable multi-section technical explainers for research papers, algorithms, distributed systems, and systems internals. Use generic, data-driven section kinds:
+- `tldr`: Executive summary with `takeaways[]` or `content` bullet points.
+- `narrative`: Core conceptual prose with `paragraphs[]`, `number` badge, and optional `formula`.
+- `simulator`: Interactive step-through state machine with `widget_title`, `elements[]` (or `tokens[]`), `metrics[]`, and footer status.
+- `chart`: Mathematical complexity curves with `x_label`, `y_label`, and `curves: [{ label, type, color }]` (`constant`, `logarithmic`, `linear`, `quadratic`, `exponential`).
+- `calculator`: Parametric sizing estimator with `widget_title`, `formula`, `inputs: [{ label, value, sublabel }]`, `outputs: [{ label, value, highlight, unit }]`, and `summary_note`.
+- `grid_cards`: Multi-column conceptual taxonomy cards with `columns: 2|3` and `cards: [{ eyebrow, title, description, tag, highlight }]`.
+- `steps`: Classic linear sequential rail cards with `items: [{ label, type, math, code, takeaways }]`.
+
 ## Repository evidence
 
 When the diagram must reflect real code, inspect repository entrypoints, runtime boundaries, storage, transports, and deployment configuration before authoring. Record only evidence you actually verified. Use `--repo-root <path>` when the chosen renderer supports evidence receipts. Never infer runtime causality from file proximity or naming alone.

@@ -19492,14 +19492,13 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
           const promptCount = promptTokens.length;
 
-          if (widgetType === &#39;position_signals&#39;) {
+          if (widgetType !== &#39;decode_kv&#39;) {
             const activeIdx = currentStep &lt; promptCount ? currentStep : (promptCount - 1);
-            if (posDisplay) posDisplay.textContent = &#39;pos = &#39; + activeIdx;
-            const freq = (1 / Math.pow(10000, (2 * activeIdx) / 64)).toFixed(3);
-            if (freqDisplay) freqDisplay.textContent = &#39;ω_&#39; + activeIdx + &#39; = &#39; + freq;
+            if (posDisplay) posDisplay.textContent = &#39;Step &#39; + (activeIdx + 1);
+            if (freqDisplay) freqDisplay.textContent = &#39;Stage &#39; + (activeIdx + 1) + &#39; / &#39; + totalSteps;
             if (cacheTokens) {
-              const activeWord = promptTokens[activeIdx] || (&#39;token_&#39; + activeIdx);
-              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot; with position tag: &#39; + activeIdx;
+              const activeWord = promptTokens[activeIdx] || (&#39;step_&#39; + (activeIdx + 1));
+              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot;&#39;;
             }
 
             tokenElements.forEach((el, idx) =&gt; {
@@ -34634,14 +34633,13 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
           const promptCount = promptTokens.length;
 
-          if (widgetType === &#39;position_signals&#39;) {
+          if (widgetType !== &#39;decode_kv&#39;) {
             const activeIdx = currentStep &lt; promptCount ? currentStep : (promptCount - 1);
-            if (posDisplay) posDisplay.textContent = &#39;pos = &#39; + activeIdx;
-            const freq = (1 / Math.pow(10000, (2 * activeIdx) / 64)).toFixed(3);
-            if (freqDisplay) freqDisplay.textContent = &#39;ω_&#39; + activeIdx + &#39; = &#39; + freq;
+            if (posDisplay) posDisplay.textContent = &#39;Step &#39; + (activeIdx + 1);
+            if (freqDisplay) freqDisplay.textContent = &#39;Stage &#39; + (activeIdx + 1) + &#39; / &#39; + totalSteps;
             if (cacheTokens) {
-              const activeWord = promptTokens[activeIdx] || (&#39;token_&#39; + activeIdx);
-              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot; with position tag: &#39; + activeIdx;
+              const activeWord = promptTokens[activeIdx] || (&#39;step_&#39; + (activeIdx + 1));
+              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot;&#39;;
             }
 
             tokenElements.forEach((el, idx) =&gt; {

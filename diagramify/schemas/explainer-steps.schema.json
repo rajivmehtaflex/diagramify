@@ -109,7 +109,21 @@
               "properties": {
                 "text": { "type": "string", "maxLength": 40 },
                 "index": { "type": "integer" },
-                "tag": { "type": "string", "maxLength": 30 }
+                "tag": { "type": "string", "maxLength": 30 },
+                "detail": { "type": "string", "maxLength": 40 }
+              }
+            }
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text"],
+              "properties": {
+                "text": { "type": "string", "maxLength": 40 },
+                "tag": { "type": "string", "maxLength": 30 },
+                "detail": { "type": "string", "maxLength": 40 }
               }
             }
           },
@@ -133,13 +147,41 @@
               "required": ["label", "type"],
               "properties": {
                 "label": { "type": "string", "maxLength": 40 },
-                "type": { "enum": ["linear", "quadratic", "exponential"] },
+                "type": { "enum": ["constant", "logarithmic", "linear", "quadratic", "exponential"] },
                 "color": { "type": "string", "maxLength": 20 },
                 "style": { "enum": ["solid", "dashed"] }
               }
             }
           },
           "footer_note": { "type": "string", "maxLength": 300 },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "value"],
+              "properties": {
+                "label": { "type": "string", "maxLength": 50 },
+                "value": { "type": "string", "maxLength": 40 },
+                "sublabel": { "type": "string", "maxLength": 50 }
+              }
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "value"],
+              "properties": {
+                "label": { "type": "string", "maxLength": 50 },
+                "value": { "type": "string", "maxLength": 40 },
+                "highlight": { "type": "boolean" },
+                "unit": { "type": "string", "maxLength": 20 }
+              }
+            }
+          },
+          "summary_note": { "type": "string", "maxLength": 300 },
           "model_options": {
             "type": "array",
             "items": {
