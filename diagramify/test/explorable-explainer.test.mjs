@@ -39,7 +39,7 @@ test("explorable-steps renders KV Cache multi-section explorable explainer clean
   assert.ok(doc, "SVG must be parseable XML");
 
   // Verify key explorable sections are present in markup
-  assert.match(svg, /data-widget="decode-simulator"/, "Must contain decode simulator widget");
+  assert.match(svg, /data-widget="explainer-simulator"|data-widget="decode-simulator"/, "Must contain simulator widget");
   assert.match(svg, /data-widget="cache-calculator"/, "Must contain cache calculator widget");
   assert.match(svg, /TL;DR/, "Must contain TL;DR block");
   assert.match(svg, /with cache — linear/, "Must contain complexity chart with linear curve");
@@ -59,7 +59,7 @@ test("explorable-steps maintains backward compatibility with classic linear step
   assert.equal(data.validation.errors, 0);
 });
 
-test("explorable-steps normalizes tldr takeaways and prevents grid_cards multi-row overlap", () => {
+test("explorable-steps normalizes tldr takeaways, prevents grid_cards multi-row overlap, and renders topic-aware position simulators", () => {
   const customSpec = {
     schema_version: 1,
     diagram_type: "explainer-steps",
@@ -84,8 +84,15 @@ test("explorable-steps normalizes tldr takeaways and prevents grid_cards multi-r
         ]
       },
       {
-        kind: "grid_cards",
+        kind: "simulator",
         number: "§02",
+        title: "See position signals vary",
+        widget_type: "position_signals",
+        prompt_tokens: ["The", "cat", "sat", "on", "the", "mat"]
+      },
+      {
+        kind: "grid_cards",
+        number: "§03",
         title: "Four ways to represent position",
         columns: 2,
         cards: [
@@ -97,7 +104,7 @@ test("explorable-steps normalizes tldr takeaways and prevents grid_cards multi-r
       },
       {
         kind: "narrative",
-        number: "§03",
+        number: "§04",
         title: "Research grounding",
         paragraphs: [
           "Modern LLMs almost universally adopt RoPE for length generalization."
@@ -123,10 +130,17 @@ test("explorable-steps normalizes tldr takeaways and prevents grid_cards multi-r
   assert.match(svg, /• Self-attention has no inherent sense of word order\./);
   assert.match(svg, /• Position signals inject sequence coordinates/);
 
-  // Verify Section 3 (Research grounding) does NOT collide with Row 2 of grid_cards
-  // In a 2-col 4-card grid, Row 0 is at cardStartY and Row 1 is at cardStartY + maxCardH + 14.
-  // Section 3 must appear strictly below Row 1 cards.
+  // Verify Simulator is rendered with position signals (chips, indices, signal frequency, NO kv cache copy)
+  assert.match(svg, /POSITION SIGNAL SIMULATOR/);
+  assert.match(svg, /ACTIVE POSITION INDEX/);
+  assert.match(svg, /SIGNAL FREQUENCY/);
+  assert.match(svg, /pos: 0/);
+  assert.match(svg, /pos: 5/);
+  assert.ok(!svg.includes("TOTAL K,V OPS"), "Position simulator must not have KV cache ops text");
+  assert.ok(!svg.includes("without cache vs with"), "Position simulator must not have KV cache sublabels");
+
+  // Verify Section 4 (Research grounding) does NOT collide with Row 2 of grid_cards
   assert.match(svg, /id="section-grid-comparison"/);
-  assert.match(svg, /§03/);
+  assert.match(svg, /§04/);
   assert.match(svg, /Research grounding/);
 });

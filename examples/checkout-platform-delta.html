@@ -19463,15 +19463,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
     // Interactive Explainer Widgets (Decode Simulator &amp; Cache Memory Calculator)
     (function () {
       function initSimulator() {
-        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;]&#39;);
+        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;], [data-widget=&quot;explainer-simulator&quot;]&#39;);
         if (!sim) return;
+        const widgetType = sim.getAttribute(&#39;data-widget-type&#39;) || &#39;decode_kv&#39;;
         let promptTokens = [];
         let genTokens = [];
         try {
           promptTokens = JSON.parse(sim.getAttribute(&#39;data-prompt-tokens&#39;) || &#39;[]&#39;);
           genTokens = JSON.parse(sim.getAttribute(&#39;data-gen-tokens&#39;) || &#39;[]&#39;);
         } catch (_) {}
-        const totalSteps = genTokens.length;
+        const totalSteps = widgetType === &#39;position_signals&#39; ? promptTokens.length : (genTokens.length || promptTokens.length);
         let currentStep = 0;
         let playing = false;
         let timer = null;
@@ -19482,41 +19483,69 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         const wastedRatio = sim.querySelector(&#39;[data-sim-wasted]&#39;);
         const cacheTokens = sim.querySelector(&#39;[data-sim-cache-tokens]&#39;);
         const tokenElements = sim.querySelectorAll(&#39;[data-token-idx]&#39;);
+        const posDisplay = sim.querySelector(&#39;[data-sim-pos]&#39;);
+        const freqDisplay = sim.querySelector(&#39;[data-sim-freq]&#39;);
         const playBtn = sim.querySelector(&#39;[data-sim-play]&#39;);
         const resetBtn = sim.querySelector(&#39;[data-sim-reset]&#39;);
 
         function update() {
           if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
           const promptCount = promptTokens.length;
-          const totalCurrent = promptCount + currentStep;
 
-          const withOps = promptCount + currentStep;
-          let withoutOps = promptCount;
-          for (let i = 1; i &lt;= currentStep; i++) {
-            withoutOps += (promptCount + i);
-          }
-          const wasted = (withoutOps / withOps).toFixed(1);
-
-          if (withCacheOps) withCacheOps.textContent = withOps;
-          if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
-          if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
-          if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
-
-          tokenElements.forEach((el, idx) =&gt; {
-            const isGen = idx &gt;= promptCount;
-            const genIdx = idx - promptCount;
-            if (isGen) {
-              if (genIdx &lt; currentStep) {
-                el.classList.remove(&#39;t-dim&#39;);
-                el.classList.add(&#39;t-frontend&#39;);
-                el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
-              } else {
-                el.classList.remove(&#39;t-frontend&#39;);
-                el.classList.add(&#39;t-dim&#39;);
-                el.removeAttribute(&#39;font-weight&#39;);
-              }
+          if (widgetType === &#39;position_signals&#39;) {
+            const activeIdx = currentStep &lt; promptCount ? currentStep : (promptCount - 1);
+            if (posDisplay) posDisplay.textContent = &#39;pos = &#39; + activeIdx;
+            const freq = (1 / Math.pow(10000, (2 * activeIdx) / 64)).toFixed(3);
+            if (freqDisplay) freqDisplay.textContent = &#39;ω_&#39; + activeIdx + &#39; = &#39; + freq;
+            if (cacheTokens) {
+              const activeWord = promptTokens[activeIdx] || (&#39;token_&#39; + activeIdx);
+              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot; with position tag: &#39; + activeIdx;
             }
-          });
+
+            tokenElements.forEach((el, idx) =&gt; {
+              const rect = el.querySelector(&#39;rect:nth-of-type(2)&#39;);
+              if (idx === activeIdx) {
+                if (rect) {
+                  rect.setAttribute(&#39;class&#39;, &#39;c-frontend&#39;);
+                  rect.setAttribute(&#39;stroke-width&#39;, &#39;2&#39;);
+                }
+              } else {
+                if (rect) {
+                  rect.setAttribute(&#39;class&#39;, &#39;c-external&#39;);
+                  rect.setAttribute(&#39;stroke-width&#39;, &#39;1&#39;);
+                }
+              }
+            });
+          } else {
+            const totalCurrent = promptCount + currentStep;
+            const withOps = promptCount + currentStep;
+            let withoutOps = promptCount;
+            for (let i = 1; i &lt;= currentStep; i++) {
+              withoutOps += (promptCount + i);
+            }
+            const wasted = (withoutOps / withOps).toFixed(1);
+
+            if (withCacheOps) withCacheOps.textContent = withOps;
+            if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
+            if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
+            if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
+
+            tokenElements.forEach((el, idx) =&gt; {
+              const isGen = idx &gt;= promptCount;
+              const genIdx = idx - promptCount;
+              if (isGen) {
+                if (genIdx &lt; currentStep) {
+                  el.classList.remove(&#39;t-dim&#39;);
+                  el.classList.add(&#39;t-frontend&#39;);
+                  el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
+                } else {
+                  el.classList.remove(&#39;t-frontend&#39;);
+                  el.classList.add(&#39;t-dim&#39;);
+                  el.removeAttribute(&#39;font-weight&#39;);
+                }
+              }
+            });
+          }
         }
 
         function step() {
@@ -34576,15 +34605,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
     // Interactive Explainer Widgets (Decode Simulator &amp; Cache Memory Calculator)
     (function () {
       function initSimulator() {
-        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;]&#39;);
+        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;], [data-widget=&quot;explainer-simulator&quot;]&#39;);
         if (!sim) return;
+        const widgetType = sim.getAttribute(&#39;data-widget-type&#39;) || &#39;decode_kv&#39;;
         let promptTokens = [];
         let genTokens = [];
         try {
           promptTokens = JSON.parse(sim.getAttribute(&#39;data-prompt-tokens&#39;) || &#39;[]&#39;);
           genTokens = JSON.parse(sim.getAttribute(&#39;data-gen-tokens&#39;) || &#39;[]&#39;);
         } catch (_) {}
-        const totalSteps = genTokens.length;
+        const totalSteps = widgetType === &#39;position_signals&#39; ? promptTokens.length : (genTokens.length || promptTokens.length);
         let currentStep = 0;
         let playing = false;
         let timer = null;
@@ -34595,41 +34625,69 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         const wastedRatio = sim.querySelector(&#39;[data-sim-wasted]&#39;);
         const cacheTokens = sim.querySelector(&#39;[data-sim-cache-tokens]&#39;);
         const tokenElements = sim.querySelectorAll(&#39;[data-token-idx]&#39;);
+        const posDisplay = sim.querySelector(&#39;[data-sim-pos]&#39;);
+        const freqDisplay = sim.querySelector(&#39;[data-sim-freq]&#39;);
         const playBtn = sim.querySelector(&#39;[data-sim-play]&#39;);
         const resetBtn = sim.querySelector(&#39;[data-sim-reset]&#39;);
 
         function update() {
           if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
           const promptCount = promptTokens.length;
-          const totalCurrent = promptCount + currentStep;
 
-          const withOps = promptCount + currentStep;
-          let withoutOps = promptCount;
-          for (let i = 1; i &lt;= currentStep; i++) {
-            withoutOps += (promptCount + i);
-          }
-          const wasted = (withoutOps / withOps).toFixed(1);
-
-          if (withCacheOps) withCacheOps.textContent = withOps;
-          if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
-          if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
-          if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
-
-          tokenElements.forEach((el, idx) =&gt; {
-            const isGen = idx &gt;= promptCount;
-            const genIdx = idx - promptCount;
-            if (isGen) {
-              if (genIdx &lt; currentStep) {
-                el.classList.remove(&#39;t-dim&#39;);
-                el.classList.add(&#39;t-frontend&#39;);
-                el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
-              } else {
-                el.classList.remove(&#39;t-frontend&#39;);
-                el.classList.add(&#39;t-dim&#39;);
-                el.removeAttribute(&#39;font-weight&#39;);
-              }
+          if (widgetType === &#39;position_signals&#39;) {
+            const activeIdx = currentStep &lt; promptCount ? currentStep : (promptCount - 1);
+            if (posDisplay) posDisplay.textContent = &#39;pos = &#39; + activeIdx;
+            const freq = (1 / Math.pow(10000, (2 * activeIdx) / 64)).toFixed(3);
+            if (freqDisplay) freqDisplay.textContent = &#39;ω_&#39; + activeIdx + &#39; = &#39; + freq;
+            if (cacheTokens) {
+              const activeWord = promptTokens[activeIdx] || (&#39;token_&#39; + activeIdx);
+              cacheTokens.textContent = &#39;Active: &quot;&#39; + activeWord + &#39;&quot; with position tag: &#39; + activeIdx;
             }
-          });
+
+            tokenElements.forEach((el, idx) =&gt; {
+              const rect = el.querySelector(&#39;rect:nth-of-type(2)&#39;);
+              if (idx === activeIdx) {
+                if (rect) {
+                  rect.setAttribute(&#39;class&#39;, &#39;c-frontend&#39;);
+                  rect.setAttribute(&#39;stroke-width&#39;, &#39;2&#39;);
+                }
+              } else {
+                if (rect) {
+                  rect.setAttribute(&#39;class&#39;, &#39;c-external&#39;);
+                  rect.setAttribute(&#39;stroke-width&#39;, &#39;1&#39;);
+                }
+              }
+            });
+          } else {
+            const totalCurrent = promptCount + currentStep;
+            const withOps = promptCount + currentStep;
+            let withoutOps = promptCount;
+            for (let i = 1; i &lt;= currentStep; i++) {
+              withoutOps += (promptCount + i);
+            }
+            const wasted = (withoutOps / withOps).toFixed(1);
+
+            if (withCacheOps) withCacheOps.textContent = withOps;
+            if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
+            if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
+            if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
+
+            tokenElements.forEach((el, idx) =&gt; {
+              const isGen = idx &gt;= promptCount;
+              const genIdx = idx - promptCount;
+              if (isGen) {
+                if (genIdx &lt; currentStep) {
+                  el.classList.remove(&#39;t-dim&#39;);
+                  el.classList.add(&#39;t-frontend&#39;);
+                  el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
+                } else {
+                  el.classList.remove(&#39;t-frontend&#39;);
+                  el.classList.add(&#39;t-dim&#39;);
+                  el.removeAttribute(&#39;font-weight&#39;);
+                }
+              }
+            });
+          }
         }
 
         function step() {

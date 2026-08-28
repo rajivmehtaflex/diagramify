@@ -327,37 +327,38 @@ function renderSimulatorBlock(sec) {
 
   const boxY = curY;
   const boxH = 195;
-  const promptToks = sec.prompt_tokens || ['Explain', 'the', 'KV', 'cache', 'to', 'a', 'reader'];
-  const genToks = sec.generated_tokens || [':', 'each', 'new', 'token', 'reuses', 'every', 'key', 'and', 'value', 'computed', 'before', 'it'];
 
-  return `        <!-- Interactive Decode Simulator -->
-        <g id="section-simulator" class="explainer-simulator" data-widget="decode-simulator"
-           data-prompt-tokens="${esc(JSON.stringify(promptToks))}"
-           data-gen-tokens="${esc(JSON.stringify(genToks))}">
-          ${numBadge}
-          ${descMarkup}
+  const widgetType = sec.widget_type || (sec.title && /position|signal|rope/i.test(sec.title) ? 'position_signals' : (sec.generated_tokens ? 'decode_kv' : 'token_stream'));
+  const widgetTitle = sec.widget_title || (widgetType === 'position_signals' ? 'POSITION SIGNAL SIMULATOR' : widgetType === 'decode_kv' ? 'DECODE SIMULATOR' : 'INTERACTIVE SIMULATOR');
 
-          <!-- Simulator Card Frame -->
-          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-mask"/>
-          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-backend" stroke-width="1.5"/>
+  const promptToks = sec.prompt_tokens || (widgetType === 'position_signals' ? ['The', 'cat', 'sat', 'on', 'the', 'mat'] : ['Explain', 'the', 'KV', 'cache', 'to', 'a', 'reader']);
+  const genToks = sec.generated_tokens || [];
 
-          <!-- Top Toolbar -->
-          <text data-detail="fine" x="${CARD_X + 20}" y="${boxY + 24}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1">DECODE SIMULATOR</text>
-          
-          <!-- Controls (Reset / Play) -->
-          <g class="sim-ctrl-btn" data-sim-reset="" style="cursor: pointer;">
-            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-mask"/>
-            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-external" stroke-width="1"/>
-            <text x="${CARD_X + CARD_WIDTH - 95}" y="${boxY + 24}" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Reset</text>
-          </g>
-          <g class="sim-ctrl-btn" data-sim-play="" style="cursor: pointer;">
-            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-mask"/>
-            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-frontend" stroke-width="1"/>
-            <text x="${CARD_X + CARD_WIDTH - 40}" y="${boxY + 24}" class="t-frontend" font-size="8" font-weight="600" text-anchor="middle">▶ Play</text>
-          </g>
+  let tokensStripMarkup = '';
+  if (widgetType === 'position_signals' || sec.tokens) {
+    const tokensList = sec.tokens || promptToks.map((t, idx) => ({ text: t, index: idx, tag: `pos: ${idx}` }));
+    const totalChips = tokensList.length;
+    const chipGap = 8;
+    const chipWidth = Math.min(84, Math.floor((CARD_WIDTH - 48 - (totalChips - 1) * chipGap) / totalChips));
+    const chipsHtml = tokensList.map((tok, idx) => {
+      const cx = CARD_X + 24 + idx * (chipWidth + chipGap);
+      const isFirst = idx === 0;
+      return `
+            <g class="sim-token-chip" data-token-idx="${idx}" style="cursor: pointer;">
+              <rect x="${cx}" y="${boxY + 46}" width="${chipWidth}" height="34" rx="6" class="c-mask"/>
+              <rect x="${cx}" y="${boxY + 46}" width="${chipWidth}" height="34" rx="6" class="${isFirst ? 'c-frontend' : 'c-external'}" stroke-width="${isFirst ? '1.5' : '1'}"/>
+              <text x="${cx + chipWidth / 2}" y="${boxY + 60}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="middle">${esc(tok.text)}</text>
+              <text x="${cx + chipWidth / 2}" y="${boxY + 73}" class="t-dim" font-size="6.5" font-weight="600" text-anchor="middle">${esc(tok.tag || `pos: ${tok.index ?? idx}`)}</text>
+            </g>`;
+    }).join('');
 
-          <text data-sim-step="" x="${CARD_X + CARD_WIDTH - 130}" y="${boxY + 24}" class="t-dim" font-size="8" text-anchor="end">step 0 / ${genToks.length}</text>
-
+    tokensStripMarkup = `
+          <!-- Token Discrete Chips Strip -->
+          <g class="sim-tokens-chips">
+            ${chipsHtml}
+          </g>`;
+  } else {
+    tokensStripMarkup = `
           <!-- Token Sequence Strip -->
           <g class="sim-tokens">
             <rect x="${CARD_X + 20}" y="${boxY + 42}" width="${CARD_WIDTH - 40}" height="42" rx="6" class="c-mask"/>
@@ -366,9 +367,59 @@ function renderSimulatorBlock(sec) {
               ${promptToks.map((t, idx) => `<tspan data-token-idx="${idx}" class="t-primary" font-weight="600">${esc(t)} </tspan>`).join('')}
               ${genToks.map((t, idx) => `<tspan data-token-idx="${promptToks.length + idx}" class="t-dim" data-token-state="dim">${esc(t)} </tspan>`).join('')}
             </text>
+          </g>`;
+  }
+
+  // Render 3 Stat Boxes
+  let statBoxesMarkup = '';
+  if (Array.isArray(sec.metrics) && sec.metrics.length > 0) {
+    const cardW = 186;
+    const cardGap = 16;
+    statBoxesMarkup = sec.metrics.slice(0, 3).map((m, idx) => {
+      const bx = CARD_X + 20 + idx * (cardW + cardGap);
+      const colorClass = m.color === 'cloud' ? 'c-cloud' : m.color === 'security' ? 'c-security' : idx === 2 ? 'c-security' : 'c-external';
+      const textClass = m.color === 'cloud' ? 't-cloud' : m.color === 'security' ? 't-security' : idx === 0 ? 't-frontend' : idx === 1 ? 't-cloud' : 't-security';
+      return `
+          <!-- Stat ${idx + 1} -->
+          <g class="sim-stat-box">
+            <rect x="${bx}" y="${boxY + 96}" width="${cardW}" height="64" rx="6" class="c-mask"/>
+            <rect x="${bx}" y="${boxY + 96}" width="${cardW}" height="64" rx="6" class="${colorClass}" stroke-width="1"/>
+            <text x="${bx + 12}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">${esc(m.label.toUpperCase())}</text>
+            <text data-sim-metric="${idx}" x="${bx + 12}" y="${boxY + 134}" class="${textClass}" font-size="15" font-weight="700">${esc(m.value)}</text>
+            <text x="${bx + 12}" y="${boxY + 148}" class="t-muted" font-size="7.5">${esc(m.sublabel || '')}</text>
+          </g>`;
+    }).join('');
+  } else if (widgetType === 'position_signals') {
+    statBoxesMarkup = `
+          <!-- Stat 1: Active Position -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 30}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">ACTIVE POSITION INDEX</text>
+            <text data-sim-pos="" x="${CARD_X + 30}" y="${boxY + 134}" class="t-frontend" font-size="16" font-weight="700">pos = 0</text>
+            <text x="${CARD_X + 30}" y="${boxY + 148}" class="t-muted" font-size="7.5">0 ≤ pos &lt; ${promptToks.length}</text>
           </g>
 
-          <!-- 3 Side-by-Side Stat Cards -->
+          <!-- Stat 2: Frequency -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 232}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">SIGNAL FREQUENCY</text>
+            <text data-sim-freq="" x="${CARD_X + 232}" y="${boxY + 134}" class="t-cloud" font-size="14" font-weight="700">ω_0 = 1.000</text>
+            <text x="${CARD_X + 232}" y="${boxY + 148}" class="t-muted" font-size="7.5">ω_i = 10000^(-2i/d)</text>
+          </g>
+
+          <!-- Stat 3: Geometry -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-database" stroke-width="1"/>
+            <text x="${CARD_X + 434}" y="${boxY + 112}" class="t-database" font-size="7" font-weight="700" letter-spacing="0.5">VECTOR GEOMETRY</text>
+            <text data-sim-geom="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-database" font-size="14" font-weight="700">Orthogonal</text>
+            <text x="${CARD_X + 434}" y="${boxY + 148}" class="t-muted" font-size="7.5">preserves relative distance</text>
+          </g>`;
+  } else {
+    // Default KV decode
+    statBoxesMarkup = `
           <!-- Stat 1: With Cache -->
           <g class="sim-stat-box">
             <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
@@ -394,11 +445,48 @@ function renderSimulatorBlock(sec) {
             <text x="${CARD_X + 434}" y="${boxY + 112}" class="t-security" font-size="7" font-weight="700" letter-spacing="0.5">EXTRA COMPUTE WASTED</text>
             <text data-sim-wasted="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-security" font-size="16" font-weight="700">1.0×</text>
             <text x="${CARD_X + 482}" y="${boxY + 134}" class="t-muted" font-size="8">without cache vs with</text>
+          </g>`;
+  }
+
+  const footerLabel = sec.status_label || (widgetType === 'position_signals' ? 'Position encoding status' : 'Cache contents');
+  const footerValue = sec.status_value || (widgetType === 'position_signals' ? `${promptToks.length} position vectors attached` : `${promptToks.length} tokens stored`);
+  const totalSteps = widgetType === 'position_signals' ? promptToks.length : (genToks.length || promptToks.length);
+
+  return `        <!-- Interactive Simulator (${esc(widgetType)}) -->
+        <g id="section-simulator" class="explainer-simulator" data-widget="explainer-simulator"
+           data-widget-type="${esc(widgetType)}"
+           data-prompt-tokens="${esc(JSON.stringify(promptToks))}"
+           data-gen-tokens="${esc(JSON.stringify(genToks))}">
+          ${numBadge}
+          ${descMarkup}
+
+          <!-- Simulator Card Frame -->
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-mask"/>
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-backend" stroke-width="1.5"/>
+
+          <!-- Top Toolbar -->
+          <text data-detail="fine" x="${CARD_X + 20}" y="${boxY + 24}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1">${esc(widgetTitle)}</text>
+          
+          <!-- Controls (Reset / Play) -->
+          <g class="sim-ctrl-btn" data-sim-reset="" style="cursor: pointer;">
+            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-mask"/>
+            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + CARD_WIDTH - 95}" y="${boxY + 24}" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Reset</text>
+          </g>
+          <g class="sim-ctrl-btn" data-sim-play="" style="cursor: pointer;">
+            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-mask"/>
+            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-frontend" stroke-width="1"/>
+            <text x="${CARD_X + CARD_WIDTH - 40}" y="${boxY + 24}" class="t-frontend" font-size="8" font-weight="600" text-anchor="middle">▶ Play</text>
           </g>
 
+          <text data-sim-step="" x="${CARD_X + CARD_WIDTH - 130}" y="${boxY + 24}" class="t-dim" font-size="8" text-anchor="end">step 0 / ${totalSteps}</text>
+
+          ${tokensStripMarkup}
+          ${statBoxesMarkup}
+
           <!-- Bottom Footer Bar -->
-          <text x="${CARD_X + 24}" y="${boxY + 178}" class="t-dim" font-size="8">Cache contents</text>
-          <text data-sim-cache-tokens="" x="${CARD_X + CARD_WIDTH - 24}" y="${boxY + 178}" class="t-frontend" font-size="8" font-weight="600" text-anchor="end">${promptToks.length} tokens stored</text>
+          <text x="${CARD_X + 24}" y="${boxY + 178}" class="t-dim" font-size="8">${esc(footerLabel)}</text>
+          <text data-sim-cache-tokens="" x="${CARD_X + CARD_WIDTH - 24}" y="${boxY + 178}" class="t-frontend" font-size="8" font-weight="600" text-anchor="end">${esc(footerValue)}</text>
         </g>`;
 }
 

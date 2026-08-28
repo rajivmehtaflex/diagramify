@@ -81,6 +81,38 @@
             "items": { "type": "string", "maxLength": 1000 }
           },
           "formula": { "type": "string", "maxLength": 300 },
+          "widget_title": { "type": "string", "maxLength": 60 },
+          "widget_type": { "enum": ["decode_kv", "position_signals", "token_stream", "generic_step"] },
+          "status_label": { "type": "string", "maxLength": 60 },
+          "status_value": { "type": "string", "maxLength": 60 },
+          "metrics": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "value"],
+              "properties": {
+                "label": { "type": "string", "maxLength": 60 },
+                "value": { "type": "string", "maxLength": 30 },
+                "sublabel": { "type": "string", "maxLength": 60 },
+                "color": { "type": "string", "maxLength": 20 }
+              }
+            }
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text"],
+              "properties": {
+                "text": { "type": "string", "maxLength": 40 },
+                "index": { "type": "integer" },
+                "tag": { "type": "string", "maxLength": 30 }
+              }
+            }
+          },
           "prompt_tokens": {
             "type": "array",
             "items": { "type": "string", "maxLength": 30 }
