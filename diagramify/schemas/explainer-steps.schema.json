@@ -70,7 +70,12 @@
           "number": { "type": "string", "maxLength": 8 },
           "title": { "type": "string", "maxLength": 120 },
           "description": { "type": "string", "maxLength": 500 },
+          "summary": { "type": "string", "maxLength": 1000 },
           "content": { "type": "string", "maxLength": 1000 },
+          "takeaways": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 300 }
+          },
           "paragraphs": {
             "type": "array",
             "items": { "type": "string", "maxLength": 1000 }

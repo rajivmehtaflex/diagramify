@@ -106,11 +106,26 @@ if (hasSections) {
     let secHeight = 0;
     const kind = sec.kind;
     if (kind === 'tldr') {
-      const contentLines = wrapDescription(sec.content, DESC_MAX_UNITS - 6);
+      let contentLines = [];
+      if (Array.isArray(sec.takeaways) && sec.takeaways.length > 0) {
+        contentLines = sec.takeaways.flatMap((t) => wrapDescription(`•  ${t}`, DESC_MAX_UNITS - 6));
+      } else {
+        const rawText = sec.content || sec.description || sec.summary || sec.text ||
+          (Array.isArray(sec.paragraphs) ? sec.paragraphs.join('\n') : '');
+        contentLines = wrapDescription(rawText, DESC_MAX_UNITS - 6);
+      }
+      if (contentLines.length === 0) {
+        contentLines = ['Summary of key takeaways and architecture concepts.'];
+      }
       secHeight = 44 + contentLines.length * LINE_H + CARD_PADDING;
       measuredSections.push({ ...sec, contentLines, y: cursorY, height: secHeight });
     } else if (kind === 'narrative') {
-      const allParaLines = (sec.paragraphs || []).map((p) => wrapDescription(p, DESC_MAX_UNITS));
+      let paragraphs = sec.paragraphs;
+      if (!Array.isArray(paragraphs) || paragraphs.length === 0) {
+        const raw = sec.content || sec.description || sec.text || sec.summary || '';
+        paragraphs = raw ? raw.split('\n\n').filter(Boolean) : [];
+      }
+      const allParaLines = paragraphs.map((p) => wrapDescription(p, DESC_MAX_UNITS));
       const totalParaLines = allParaLines.reduce((acc, lines) => acc + lines.length, 0);
       const formulaH = sec.formula ? 44 : 0;
       secHeight = 36 + totalParaLines * LINE_H + (allParaLines.length > 1 ? (allParaLines.length - 1) * 12 : 0) + formulaH + CARD_PADDING;
@@ -132,14 +147,17 @@ if (hasSections) {
       const descLines = sec.description ? wrapDescription(sec.description, DESC_MAX_UNITS) : [];
       const cols = sec.columns || (sec.cards?.length === 2 ? 2 : 3);
       const colWidth = Math.floor((CARD_WIDTH - (cols - 1) * 14) / cols);
+      const cardGap = 14;
       const measuredCards = (sec.cards || []).map((c) => {
         const cLines = wrapDescription(c.description, Math.floor(colWidth / 7.2));
         const cH = 46 + cLines.length * 13 + 18;
         return { ...c, cLines, height: cH };
       });
       const maxCardH = Math.max(...measuredCards.map((c) => c.height), 110);
-      secHeight = 40 + (descLines.length ? descLines.length * LINE_H + 12 : 0) + maxCardH + CARD_PADDING;
-      measuredSections.push({ ...sec, descLines, cols, colWidth, measuredCards, maxCardH, y: cursorY, height: secHeight });
+      const numRows = Math.ceil(measuredCards.length / cols);
+      const totalGridH = numRows * maxCardH + (numRows > 1 ? (numRows - 1) * cardGap : 0);
+      secHeight = 40 + (descLines.length ? descLines.length * LINE_H + 12 : 0) + totalGridH + CARD_PADDING;
+      measuredSections.push({ ...sec, descLines, cols, colWidth, cardGap, measuredCards, maxCardH, totalGridH, y: cursorY, height: secHeight });
     } else if (kind === 'steps') {
       const items = (sec.items || []).map(measureStep);
       let stepY = cursorY + 36;
@@ -252,11 +270,16 @@ function renderTopicTagsHeader() {
 function renderTldrBlock(sec) {
   const textLines = sec.contentLines.map((line, idx) => `
           <text data-detail="context" x="${CARD_X + 24}" y="${sec.y + 44 + idx * LINE_H}" class="t-muted" font-size="9">${esc(line)}</text>`).join('');
+  const titleMarkup = sec.title
+    ? `<text data-node-label="" x="${CARD_X + 80}" y="${sec.y + 24}" class="t-primary" font-size="11" font-weight="700">${esc(sec.title)}</text>`
+    : '';
   return `        <!-- TL;DR Section -->
         <g id="section-tldr" class="explainer-tldr">
           <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-mask"/>
           <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-database" stroke-width="1.5"/>
-          <text data-detail="fine" x="${CARD_X + 24}" y="${sec.y + 24}" class="t-database" font-size="8" font-weight="700" letter-spacing="1">TL;DR</text>
+          <rect x="${CARD_X + 16}" y="${sec.y + 12}" width="48" height="18" rx="4" fill="rgba(167, 139, 250, 0.25)" stroke="#a78bfa" stroke-width="1"/>
+          <text x="${CARD_X + 40}" y="${sec.y + 24}" class="t-emphasis" text-anchor="middle" font-size="8" font-weight="700" letter-spacing="0.1em" fill="#c4b5fd">TL;DR</text>
+          ${titleMarkup}
           ${textLines}
         </g>`;
 }
