@@ -139,6 +139,7 @@ Redis Session 查询 -> PostgreSQL 回源。把缓存未命中作为次要路径
 | **Sequence** | API 调用、缓存回源、鉴权、异步链路 | 调用方、被调用方、返回、时序 |
 | **Data Flow** | 数据管线、血缘、PII、下游消费者 | 来源、转换、存储、边界 |
 | **Lifecycle** | 状态、重试、等待、终态 | 状态、事件、重试与取消路径 |
+| **Explainer Steps** | 算法、论文解读、AI/LLM 架构、公式与代码逐步拆解 | 概念顺序、数学公式、代码片段、核心要点 |
 
 做生产部署评审时，Architecture 可以按需启用 `deployment-ownership`
 工程画像：负责人、单一区域归属、数据库私有边界或边界穿越机制缺失时会直接阻断。
@@ -147,15 +148,16 @@ Redis Session 查询 -> PostgreSQL 回源。把缓存未命中作为次要路径
 
 做设计或 PR 评审时，Architecture Delta 生成已校验的 Before / Delta / After 和机器回执。精确选择任一作者变更，或播放一次有限 Review；全程只读，不推断影响、风险或合并安全。
 
-`node archify/bin/diagramify.mjs compare architecture base.json head.json architecture-delta.html --json`
+`node diagramify/bin/diagramify.mjs compare architecture base.json head.json architecture-delta.html --json`
 
 [![Architecture Delta：展示作者明确写出的新增、删除、变化和移动](docs/assets/architecture-delta-proof.jpg)](examples/checkout-platform-delta.html)
 
 不知道选哪一种？打开[交互式场景指南](https://rajivmehtaflex.github.io/diagramify/guide.html)，或直接询问零依赖 CLI：
 
 ```bash
-node archify/bin/diagramify.mjs guide "展示带 Redis 缓存未命中的 API 请求"
-node archify/bin/diagramify.mjs guide "梳理 Kafka Topic、消费者组、重放和死信队列" --json
+node diagramify/bin/diagramify.mjs guide "展示带 Redis 缓存未命中的 API 请求"
+node diagramify/bin/diagramify.mjs guide "梳理 Kafka Topic、消费者组、重放和死信队列" --json
+node diagramify/bin/diagramify.mjs guide "用公式与代码拆解 Attention 机制" --json
 ```
 
 Workflow 用泳道保持主路径清晰：
@@ -174,7 +176,37 @@ Lifecycle 区分正常进展、等待、重试和终态：
 
 ![Lifecycle 示例](docs/assets/archify-lifecycle.png)
 
-Architecture 示例：[`Web App`](examples/web-app.html) · [`Diagramify Pipeline`](examples/archify-repo.html) · [`Grid 布局`](examples/archify-repo-grid.html) · [`桌面 Agent`](examples/maka-architecture.html)
+Explainer Steps 逐步拆解复杂算法与公式代码：
+
+[![Attention 机制逐步视觉解析与公式代码](docs/assets/archify-lifecycle.png)](examples/explainer-steps-attention-mechanism.html)
+
+Architecture 与概念示例：[`Web App`](examples/web-app.html) · [`Diagramify Pipeline`](examples/archify-repo.html) · [`Grid 布局`](examples/archify-repo-grid.html) · [`桌面 Agent`](examples/maka-architecture.html) · [`Attention 机制`](examples/explainer-steps-attention-mechanism.html)
+
+## 常用 Prompt 配方
+
+直接在 AI 编程助手（Cursor、Claude Code、Codex、OpenCode）中使用开箱即用的 Prompt 模式：
+
+### 🎓 Explainer Steps（论文、算法与模型架构逐步拆解）
+> *“使用 diagramify explainer-steps 逐步解析 Multi-Head Attention 注意力机制，包含 Q/K/V 矩阵计算公式与 PyTorch Tensor 核心代码片段。”*
+>
+> *“为 Raft 共识算法的 Leader 选举阶段生成可视化步骤图，展示任期状态、RPC 投票数学关系及超时处理。”*
+
+### 🏗️ Architecture（系统架构与服务拓扑）
+> *“使用 diagramify 绘制我们微服务后端的整体架构图，包含 PostgreSQL、Redis 缓存和 Stripe 支付网关。”*
+>
+> *“为 Kubernetes 生产集群生成架构拓扑，明确标注 Ingress、Service Mesh 边界及外部云存储。”*
+
+### 🔄 Workflow（流程控制与 CI/CD 流水线）
+> *“使用 diagramify 绘制 GitOps CI/CD 发布流水线 workflow，包含自动化测试门禁、人工审批和回滚触发分支。”*
+
+### ⏱️ Sequence（API 链路与时序交互）
+> *“使用 diagramify sequence 完整展示用户登录认证时序，包括 OAuth2 重定向、JWT 刷新与会话吊销。”*
+
+### 🌊 Data Flow（数据管线与血缘流动）
+> *“绘制实时流计算分析流水线 dataflow：从 Kafka Topic 经过 Apache Flink 转换到 ClickHouse 存储并在 Grafana 展示。”*
+
+### 🔄 Lifecycle（状态机与生命周期）
+> *“可视化后台任务的完整生命周期：包括排队中、执行中、指数退避重试、死信队列以及取消终态。”*
 
 ## 为什么用 Diagramify
 
@@ -202,9 +234,9 @@ Diagramify 不是通用绘图编辑器，也不是 Mermaid 主题；它负责把
 仓库常用命令：
 
 ```bash
-cd archify
+cd diagramify
 node bin/diagramify.mjs doctor
-node bin/diagramify.mjs demo /tmp/archify-demo
+node bin/diagramify.mjs demo /tmp/diagramify-demo
 node bin/diagramify.mjs guide "展示 CI/CD 检查、审批、部署和回滚"
 node bin/diagramify.mjs validate workflow examples/agent-tool-call.workflow.json --quality showcase --json
 node bin/diagramify.mjs preview workflow examples/agent-tool-call.workflow.json /tmp/workflow.html --quality showcase

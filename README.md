@@ -143,6 +143,7 @@ Continue with focused requests such as `add Redis`, `move auth to the left`, or 
 | **Sequence** | API calls, cache fallback, auth, async traces | Callers, callees, returns, timing |
 | **Data Flow** | Pipelines, lineage, PII, consumers | Sources, transforms, stores, boundaries |
 | **Lifecycle** | States, retries, waits, terminal outcomes | States, events, retry and cancellation paths |
+| **Explainer Steps** | Algorithms, papers, AI/LLM architectures, math & code walkthroughs | Concept sequence, equations, code snippets, takeaways |
 
 For a production deployment review, Architecture can optionally enable the
 `deployment-ownership` engineering profile. It fails closed when owners,
@@ -152,15 +153,16 @@ infrastructure. See the [checked deployment proof](https://rajivmehtaflex.github
 
 For design or PR review, Architecture Delta compares validated Before / Delta / After snapshots with a machine receipt. Select an exact authored change or play one finite Review—viewer-only, with no impact, risk, or merge-safety inference.
 
-`node archify/bin/diagramify.mjs compare architecture base.json head.json architecture-delta.html --json`
+`node diagramify/bin/diagramify.mjs compare architecture base.json head.json architecture-delta.html --json`
 
 [![Architecture Delta showing added, removed, changed, and moved authored facts](docs/assets/architecture-delta-proof.jpg)](examples/checkout-platform-delta.html)
 
 Not sure which one fits? Use the [interactive scenario guide](https://rajivmehtaflex.github.io/diagramify/guide.html), or ask the zero-dependency CLI:
 
 ```bash
-node archify/bin/diagramify.mjs guide "Show an API request with Redis cache miss"
-node archify/bin/diagramify.mjs guide "Map Kafka topics, consumer groups, replay, and DLQ" --json
+node diagramify/bin/diagramify.mjs guide "Show an API request with Redis cache miss"
+node diagramify/bin/diagramify.mjs guide "Map Kafka topics, consumer groups, replay, and DLQ" --json
+node diagramify/bin/diagramify.mjs guide "Explain Attention Mechanism with math and code" --json
 ```
 
 Workflow keeps the happy path clear across lanes:
@@ -179,7 +181,37 @@ Lifecycle separates progress, waits, retries, and terminal outcomes:
 
 ![Lifecycle example](docs/assets/archify-lifecycle.png)
 
-Architecture examples: [`web-app`](examples/web-app.html) · [`Diagramify pipeline`](examples/archify-repo.html) · [`grid placement`](examples/archify-repo-grid.html) · [`desktop agent`](examples/maka-architecture.html)
+Explainer Steps walks through complex algorithms with math and code:
+
+[![Attention Mechanism visual explainer with formulas and code snippets](docs/assets/archify-lifecycle.png)](examples/explainer-steps-attention-mechanism.html)
+
+Architecture & concept examples: [`web-app`](examples/web-app.html) · [`Diagramify pipeline`](examples/archify-repo.html) · [`grid placement`](examples/archify-repo-grid.html) · [`desktop agent`](examples/maka-architecture.html) · [`Attention Mechanism`](examples/explainer-steps-attention-mechanism.html)
+
+## Sample prompt recipes
+
+Ask your AI coding assistant (Cursor, Claude Code, Codex, OpenCode) with ready-to-use prompt patterns:
+
+### 🎓 Explainer Steps (Papers, Algorithms & Architectures)
+> *"Explain the Multi-Head Attention mechanism step by step with query/key/value formulas and PyTorch tensor code snippets using diagramify explainer-steps."*
+>
+> *"Create a visual explainer of the Raft consensus algorithm leader election phase with term states, RPC math, and timeout handling."*
+
+### 🏗️ Architecture & Systems
+> *"Use diagramify to map our microservices backend architecture including PostgreSQL, Redis cache, and Stripe gateway."*
+>
+> *"Generate an architecture diagram for our Kubernetes production cluster with ingress, service mesh, and external cloud boundaries."*
+
+### 🔄 Workflow & CI/CD
+> *"Create a diagramify workflow diagram showing our GitOps CI/CD deployment pipeline with automated test gates, manual approval, and rollback triggers."*
+
+### ⏱️ Sequence & API Traces
+> *"Use diagramify sequence to show the complete user login flow with OAuth2 redirect, JWT refresh, and session revocation."*
+
+### 🌊 Data Flow & Pipelines
+> *"Map our real-time streaming analytics pipeline from Kafka topics through Apache Flink transformations to ClickHouse storage and Grafana dashboards."*
+
+### 🔄 Lifecycle & State Machines
+> *"Visualize our background job lifecycle including queued, running, exponential backoff retries, dead-letter queue, and cancellation states."*
 
 ## Why Diagramify
 
@@ -207,9 +239,9 @@ Diagramify is not a general-purpose drawing editor or a Mermaid theme. It turns 
 Useful repository commands:
 
 ```bash
-cd archify
+cd diagramify
 node bin/diagramify.mjs doctor
-node bin/diagramify.mjs demo /tmp/archify-demo
+node bin/diagramify.mjs demo /tmp/diagramify-demo
 node bin/diagramify.mjs guide "Show CI/CD checks, approval, deploy, and rollback"
 node bin/diagramify.mjs validate workflow examples/agent-tool-call.workflow.json --quality showcase --json
 node bin/diagramify.mjs preview workflow examples/agent-tool-call.workflow.json /tmp/workflow.html --quality showcase
