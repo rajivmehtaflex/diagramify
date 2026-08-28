@@ -11,7 +11,7 @@ on:
       - 'integrations/deepseek-harness/**'
       - '.github/workflows/dsh.yml'
     tags:
-      - 'archify-dsh-v*'
+      - 'diagramify-dsh-v*'
   schedule:
     - cron: '17 6 * * 1'
   workflow_dispatch:
@@ -62,7 +62,7 @@ jobs:
     needs: contract
     if: >-
       github.event_name == 'workflow_dispatch' && inputs.adapter_release
-      || startsWith(github.ref, 'refs/tags/archify-dsh-v')
+      || startsWith(github.ref, 'refs/tags/diagramify-dsh-v')
     strategy:
       fail-fast: false
       matrix:

@@ -74,7 +74,7 @@ function checkDocument(relativePath, source, version, isDevelopment) {
 
 function checkRavenBoundary(relativePath, source, language) {
   const installParent = String.raw`~\/\.raven\/workspace\/skills`;
-  const installedRoot = `${installParent}\/archify`;
+  const installedRoot = `${installParent}\/diagramify`;
   const pathBoundary = String.raw`(?=$|[\s\x60'"<>,.;:，；。])`;
   const hasEnglishManual = /manual ZIP/i.test(source);
   const hasChineseManual = /(?:手动[^\n<]{0,40}ZIP|ZIP[^\n<]{0,40}手动)/i.test(source);
@@ -82,7 +82,7 @@ function checkRavenBoundary(relativePath, source, language) {
     ? hasEnglishManual && hasChineseManual
     : language === 'zh' ? hasChineseManual : hasEnglishManual;
   const englishExtractsIntoParent = new RegExp(
-    String.raw`(?:extract|unpack)[^\n]{0,180}archify\.zip[^\n]{0,180}(?:into|to)\s*[\x60'"<]*${installParent}${pathBoundary}`,
+    String.raw`(?:extract|unpack)[^\n]{0,180}diagramify\.zip[^\n]{0,180}(?:into|to)\s*[\x60'"<]*${installParent}${pathBoundary}`,
     'i',
   ).test(source);
   const englishExplainsInstalledRoot = new RegExp(
@@ -90,7 +90,7 @@ function checkRavenBoundary(relativePath, source, language) {
     'i',
   ).test(source);
   const chineseExtractsIntoParent = new RegExp(
-    String.raw`archify\.zip[^\n]{0,100}解压(?:到|至)\s*[\x60'"<]*${installParent}${pathBoundary}`,
+    String.raw`diagramify\.zip[^\n]{0,100}解压(?:到|至)\s*[\x60'"<]*${installParent}${pathBoundary}`,
     'i',
   ).test(source);
   const chineseExplainsInstalledRoot = new RegExp(
@@ -112,7 +112,7 @@ function checkRavenBoundary(relativePath, source, language) {
     || /[?&]agent=raven\b/i.test(source);
   if (!/Raven/i.test(source) || !hasRequiredCopy || !hasCorrectDestination
     || nestedDestination || inventsSwitcher) {
-    fail(`${relativePath}: Raven must remain a manual ZIP installation outside the agent switcher: extract archify.zip into ~/.raven/workspace/skills, yielding ~/.raven/workspace/skills/archify.`);
+    fail(`${relativePath}: Raven must remain a manual ZIP installation outside the agent switcher: extract diagramify.zip into ~/.raven/workspace/skills, yielding ~/.raven/workspace/skills/diagramify.`);
   }
 }
 
@@ -122,8 +122,8 @@ function checkIdentityTemplate(relativePath, source, isDevelopment) {
   const hasIdentity = isDevelopment
     ? /development/i.test(source) && /开发版/.test(source)
     : /stable/i.test(source) && /稳定版/.test(source);
-  if (!source.includes('[[ARCHIFY_VERSION]]') || !hasIdentity || hasHardcodedVersion) {
-    fail(`${relativePath} must use [[ARCHIFY_VERSION]] with ${identity} labels, never a hardcoded package version.`);
+  if (!source.includes('[[DIAGRAMIFY_VERSION]]') || !hasIdentity || hasHardcodedVersion) {
+    fail(`${relativePath} must use [[DIAGRAMIFY_VERSION]] with ${identity} labels, never a hardcoded package version.`);
   }
 }
 
@@ -135,7 +135,7 @@ function checkRoadmap(relativePath, source, version, isDevelopment) {
   }
 }
 
-const packageJson = readJson('archify/package.json');
+const packageJson = readJson('diagramify/package.json');
 const changelog = read('CHANGELOG.md');
 const unreleasedStart = changelog.search(/^## \[Unreleased\][^\n]*(?:\n|$)/m);
 const afterUnreleased = unreleasedStart === -1
@@ -168,23 +168,23 @@ if (semver && hasRealUnreleasedChanges) {
 }
 
 if (semver) {
-  const lock = readJson('archify/package-lock.json');
+  const lock = readJson('diagramify/package-lock.json');
   if (lock.version !== version || lock.packages?.['']?.version !== version) {
-    fail(`archify/package-lock.json must match ${version} at the root and packages[""].`);
+    fail(`diagramify/package-lock.json must match ${version} at the root and packages[""].`);
   }
 
-  const skill = read('archify/SKILL.md');
+  const skill = read('diagramify/SKILL.md');
   const skillVersion = skill.match(/^\s*version:\s*["']?([^"'\s]+)["']?\s*$/m)?.[1];
   const expectedSkillVersion = `${semver[1]}.${semver[2]}`;
   if (skillVersion !== expectedSkillVersion) {
-    fail(`archify/SKILL.md metadata version ${skillVersion || '(missing)'} must map to package ${version} as ${expectedSkillVersion}.`);
+    fail(`diagramify/SKILL.md metadata version ${skillVersion || '(missing)'} must map to package ${version} as ${expectedSkillVersion}.`);
   }
 
-  const rendererTemplate = read('archify/assets/template.html');
-  const generatorVersions = [...rendererTemplate.matchAll(/<meta\s+name="generator"\s+content="archify\s+([^"]+)"\s*\/?>/g)]
+  const rendererTemplate = read('diagramify/assets/template.html');
+  const generatorVersions = [...rendererTemplate.matchAll(/<meta\s+name="generator"\s+content="diagramify\s+([^"]+)"\s*\/?>/g)]
     .map((match) => match[1]);
   if (generatorVersions.length !== 1 || generatorVersions[0] !== version) {
-    fail(`archify/assets/template.html generator must be archify ${version}; found ${generatorVersions.join(', ') || '(missing)'}.`);
+    fail(`diagramify/assets/template.html generator must be diagramify ${version}; found ${generatorVersions.join(', ') || '(missing)'}.`);
   }
 
   const english = read('README.md');
@@ -201,8 +201,8 @@ if (semver) {
   const newestStableLabel = [...changelog.matchAll(/^## \[(\d+\.\d+\.\d+)\]/gm)][0]?.[1];
   if (newestStableLabel && isDevelopment) {
     const stableMinor = newestStableLabel.split('.').slice(0, 2).join('\\.');
-    if (new RegExp(`Archify ${stableMinor} includes\\b`).test(english)
-      || new RegExp(`Archify ${stableMinor} 已覆盖`).test(chinese)) {
+    if (new RegExp(`Diagramify ${stableMinor} includes\\b`).test(english)
+      || new RegExp(`Diagramify ${stableMinor} 已覆盖`).test(chinese)) {
       fail(`README capability summary must describe v${version} as development, not published ${newestStableLabel}.`);
     }
   }

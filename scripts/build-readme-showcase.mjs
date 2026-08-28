@@ -74,7 +74,7 @@ function commandPath(command) {
 
 function findChrome() {
   const candidates = [
-    process.env.ARCHIFY_CHROME,
+    process.env.DIAGRAMIFY_CHROME,
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
     commandPath('google-chrome'),
@@ -320,7 +320,7 @@ async function main() {
     if (!fs.existsSync(artifact)) throw new Error(`${scene.id}: missing ${scene.artifact}; run node scripts/build-gallery.mjs`);
   }
   const chromePath = findChrome();
-  if (!chromePath) throw new Error('Chrome or Chromium is required. Set ARCHIFY_CHROME to its executable path.');
+  if (!chromePath) throw new Error('Chrome or Chromium is required. Set DIAGRAMIFY_CHROME to its executable path.');
   const ffmpeg = requireCommand('ffmpeg', 'Install it with your system package manager.');
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-readme-showcase-'));
   try {

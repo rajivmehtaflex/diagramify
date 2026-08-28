@@ -3,13 +3,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCENARIO_RECIPES } from '../archify/recipes/scenarios.mjs';
+import { SCENARIO_RECIPES } from '../diagramify/recipes/scenarios.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const templatePath = path.join(__dirname, 'start-template.html');
 const outputPath = path.resolve(process.argv[2] || path.join(repoRoot, 'docs/start.html'));
-const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'archify/package.json'), 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'diagramify/package.json'), 'utf8'));
 
 const START_RECIPE_IDS = Object.freeze({
   architecture: 'system-overview',
@@ -40,7 +40,7 @@ const startJson = JSON.stringify(startData)
   .replaceAll('>', '\\u003e');
 
 const replacements = {
-  '[[ARCHIFY_VERSION]]': packageJson.version,
+  '[[DIAGRAMIFY_VERSION]]': packageJson.version,
   '[[START_JSON]]': startJson,
 };
 

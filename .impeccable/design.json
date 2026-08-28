@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-07-23T00:34:12Z",
-  "title": "Design System: Archify",
+  "title": "Design System: Diagramify",
   "extensions": {
     "colorMeta": {
       "canvas": { "role": "neutral", "displayName": "Midnight Canvas", "canonical": "#020617", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f8fafc"] },
@@ -97,7 +97,7 @@
   ],
   "narrative": {
     "northStar": "The Evidence Console",
-    "overview": "Archify is a composed technical instrument, not a drawing suite. The canvas carries one spatial narrative; restrained controls and progressive disclosure let a reader move from the primary path to exact authored relationships, metadata, and verified code evidence without losing orientation. The visual system is precise, dark-first, and vivid only where semantics earn it. Light mode and Blueprint preserve the same vocabulary rather than becoming separate products. Motion has one bounded owner, finishes, and never carries meaning that disappears in a still frame. Desktop is the primary surface; narrow screens receive containment, not a second interface.",
+    "overview": "Diagramify is a composed technical instrument, not a drawing suite. The canvas carries one spatial narrative; restrained controls and progressive disclosure let a reader move from the primary path to exact authored relationships, metadata, and verified code evidence without losing orientation. The visual system is precise, dark-first, and vivid only where semantics earn it. Light mode and Blueprint preserve the same vocabulary rather than becoming separate products. Motion has one bounded owner, finishes, and never carries meaning that disappears in a still frame. Desktop is the primary surface; narrow screens receive containment, not a second interface.",
     "keyCharacteristics": [
       "One dominant technical canvas with compact, low-interference chrome.",
       "A fixed semantic color vocabulary shared by nodes, edges, legends, focus, and evidence.",
@@ -127,12 +127,12 @@
     ],
     "donts": [
       "Don't build generic Mermaid beautifiers that change themes without improving information architecture.",
-      "Don't turn Archify into WYSIWYG drawing suites whose editing chrome becomes the product.",
+      "Don't turn Diagramify into WYSIWYG drawing suites whose editing chrome becomes the product.",
       "Don't ship motion-first graph demos that imply relationships or activity not present in the authored source.",
       "Don't call authored graph reachability blast radius, breakage, dependency impact, or runtime causality.",
       "Don't present a Reach Share Card as proof of impact, failure propagation, breakage, or runtime causality.",
       "Don't use dense dashboard shells, endless identical card grids, decorative glass, gradient text, and other AI-generated interface clichés.",
-      "Don't add vendor-icon catalogues or product-name matching that weaken Archify's portable semantic vocabulary.",
+      "Don't add vendor-icon catalogues or product-name matching that weaken Diagramify's portable semantic vocabulary.",
       "Don't create another permanent panel when the Semantic Passport, Node Finder, or existing canvas can carry the capability.",
       "Don't change the README Hero as a side effect of artifact or viewer iteration."
     ]

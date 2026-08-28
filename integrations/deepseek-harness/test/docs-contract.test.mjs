@@ -20,13 +20,13 @@ test('English and Chinese docs cover install, invoke, uninstall, community wordi
   const chinese = [read('README_ZH.md'), read('integrations/deepseek-harness/README.md')].join('\n');
 
   for (const source of [english, chinese, read('README.md'), read('README_ZH.md')]) {
-    assert.match(source, /@tt-a1i\/archify-dsh@0\.1\.0/);
+    assert.match(source, /@rajivmehtaflex\/diagramify-dsh@0\.1\.0/);
     assert.match(source, /@deepseek-ai\/dsh@0\.1\.0-rc\.6/);
     assert.match(source, /\^22\.19\.0 \|\| >=24\.0\.0/);
-    assert.match(source, /dsh plugin --profile web add @tt-a1i\/archify-dsh@0\.1\.0/);
-    assert.match(source, /dsh plugin --profile web remove @tt-a1i\/archify-dsh/);
-    assert.match(source, /Use the archify skill to map this repository's runtime architecture/);
-    assert.doesNotMatch(source, /dsh plugin[^\n]*github:tt-a1i\/archify/);
+    assert.match(source, /dsh plugin --profile web add @rajivmehtaflex\/diagramify-dsh@0\.1\.0/);
+    assert.match(source, /dsh plugin --profile web remove @rajivmehtaflex\/diagramify-dsh/);
+    assert.match(source, /Use the diagramify skill to map this repository's runtime architecture/);
+    assert.doesNotMatch(source, /dsh plugin[^\n]*github:rajivmehtaflex\/diagramify/);
     assert.doesNotMatch(source, /allowBuilds:\s*true/);
     assert.doesNotMatch(source, /npm install github:/);
   }
@@ -49,8 +49,8 @@ test('English and Chinese docs cover install, invoke, uninstall, community wordi
 test('Skills CLI, Cursor, Codex, Claude Code, OpenCode, and Raven remain the default main path', () => {
   const english = read('README.md');
   const chinese = read('README_ZH.md');
-  assert.match(english, /^```bash\nnpx skills add tt-a1i\/archify -g\n```$/m);
-  assert.match(chinese, /^```bash\nnpx skills add tt-a1i\/archify -g\n```$/m);
+  assert.match(english, /^```bash\nnpx skills add rajivmehtaflex\/diagramify -g\n```$/m);
+  assert.match(chinese, /^```bash\nnpx skills add rajivmehtaflex\/diagramify -g\n```$/m);
   assert.match(english, /## Quick start/);
   assert.match(chinese, /## 快速开始/);
   const dshEnglishIndex = english.indexOf('DeepSeek Harness');

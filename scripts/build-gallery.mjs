@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
-const skillRoot = path.join(repoRoot, 'archify');
+const skillRoot = path.join(repoRoot, 'diagramify');
 const outputRoot = path.resolve(process.argv[2] || path.join(repoRoot, 'docs'));
 const artifactsRoot = path.join(outputRoot, 'gallery', 'artifacts');
 const sourcesRoot = path.join(outputRoot, 'gallery', 'sources');
@@ -300,7 +300,7 @@ for (const item of CASES) {
 const manifest = {
   schemaVersion: 1,
   generator: 'scripts/build-gallery.mjs',
-  archifyVersion: packageJson.version,
+  diagramifyVersion: packageJson.version,
   entryCount: entries.length,
   checkCount: entries.reduce((sum, entry) => sum + entry.checkCount, 0),
   entries: entries.map((entry) => ({
@@ -334,7 +334,7 @@ const manifestJson = JSON.stringify(manifest, null, 2);
 fs.writeFileSync(path.join(outputRoot, 'gallery', 'manifest.json'), `${manifestJson}\n`);
 
 const replacements = {
-  '[[ARCHIFY_VERSION]]': packageJson.version,
+  '[[DIAGRAMIFY_VERSION]]': packageJson.version,
   '[[ENTRY_COUNT]]': String(manifest.entryCount),
   '[[CHECK_COUNT]]': String(manifest.checkCount),
   '[[GALLERY_CARDS]]': entries.map(renderCard).join('\n'),

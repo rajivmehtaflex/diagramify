@@ -1,31 +1,31 @@
-# `@tt-a1i/archify-dsh`
+# `@rajivmehtaflex/diagramify-dsh`
 
-Community DeepSeek Harness integration for [Archify](https://github.com/tt-a1i/archify). This is **not** an official DeepSeek product and does not imply DeepSeek endorsement.
+Community DeepSeek Harness integration for [Diagramify](https://github.com/rajivmehtaflex/diagramify). This is **not** an official DeepSeek product and does not imply DeepSeek endorsement.
 
 v0.1.0 is experimental compatibility with developer-preview **`@deepseek-ai/dsh@0.1.0-rc.6`** on Node.js **`^22.19.0 || >=24.0.0`**. It is not a stable cross-version guarantee.
 
-The package is a Skill-only bundle: it inserts one filesystem Skill provider named `archify-plugin` and exposes a clean copy of the existing Archify Skill. It does not register native render/validate/deliver tools, a custom Web client, Produced Files chips, telemetry, network access, credentials handling, background services, or `prepare` / `install` / `postinstall` hooks.
+The package is a Skill-only bundle: it inserts one filesystem Skill provider named `diagramify-plugin` and exposes a clean copy of the existing Diagramify Skill. It does not register native render/validate/deliver tools, a custom Web client, Produced Files chips, telemetry, network access, credentials handling, background services, or `prepare` / `install` / `postinstall` hooks.
 
 ## Install
 
 Use the prebuilt npm package with an exact version. Do not install from Git source.
 
 ```bash
-dsh plugin --profile web add @tt-a1i/archify-dsh@0.1.0
+dsh plugin --profile web add @rajivmehtaflex/diagramify-dsh@0.1.0
 ```
 
 ## Invoke
 
-Ask DSH to load Archify by name:
+Ask DSH to load Diagramify by name:
 
 ```text
-Use the archify skill to map this repository's runtime architecture.
+Use the diagramify skill to map this repository's runtime architecture.
 Show 8–12 core components, one primary path, external dependencies, and trust boundaries.
 Put supporting detail in cards instead of adding more edges.
 After delivery, return the exact workspace paths of the specification JSON and the HTML artifact.
 ```
 
-Archify then runs through DSH's ordinary Skill, shell, and filesystem paths. Generated JSON and HTML are normal workspace files.
+Diagramify then runs through DSH's ordinary Skill, shell, and filesystem paths. Generated JSON and HTML are normal workspace files.
 
 ## Produced Files limitation
 
@@ -34,7 +34,7 @@ Files created by shell commands do **not** automatically appear in the Web Produ
 ## Uninstall
 
 ```bash
-dsh plugin --profile web remove @tt-a1i/archify-dsh
+dsh plugin --profile web remove @rajivmehtaflex/diagramify-dsh
 ```
 
 The standard plugin command removes the adapter dependency and bundle layer. The base profile remains usable.

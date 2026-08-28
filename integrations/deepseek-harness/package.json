@@ -1,10 +1,13 @@
 {
-  "name": "@tt-a1i/archify-dsh",
+  "name": "@rajivmehtaflex/diagramify-dsh",
   "version": "0.1.0",
-  "description": "Opt-in DeepSeek Harness Skill-only bundle for the Archify architecture-diagram skill.",
+  "description": "Opt-in DeepSeek Harness Skill-only bundle for the Diagramify architecture-diagram skill.",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
   "exports": {
     ".": "./lib/index.js",
     "./package.json": "./package.json"
@@ -27,11 +30,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tt-a1i/archify.git",
+    "url": "git+https://github.com/rajivmehtaflex/diagramify.git",
     "directory": "integrations/deepseek-harness"
   },
-  "homepage": "https://github.com/tt-a1i/archify/tree/main/integrations/deepseek-harness",
-  "bugs": "https://github.com/tt-a1i/archify/issues",
+  "homepage": "https://github.com/rajivmehtaflex/diagramify/tree/main/integrations/deepseek-harness",
+  "bugs": "https://github.com/rajivmehtaflex/diagramify/issues",
   "publishConfig": {
     "access": "public"
   },

@@ -9,7 +9,7 @@ import { spawnCliSync } from './resolve-cli.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const integrationRoot = path.resolve(here, '..');
 const repoRoot = path.resolve(integrationRoot, '..', '..');
-const archifySource = path.join(repoRoot, 'archify');
+const diagramifySource = path.join(repoRoot, 'diagramify');
 
 function argValue(flag) {
   const index = process.argv.indexOf(flag);
@@ -31,26 +31,26 @@ function excludeFromCleanSkill(sourceRoot, src) {
   return false;
 }
 
-function trackedArchifyFiles() {
-  const tracked = spawnCliSync('git', ['ls-files', '-z', '--', 'archify'], {
+function trackedDiagramifyFiles() {
+  const tracked = spawnCliSync('git', ['ls-files', '-z', '--', 'diagramify'], {
     cwd: repoRoot,
     encoding: 'utf8',
   });
   if (tracked.status !== 0) {
-    throw new Error(`unable to enumerate tracked Archify files: ${tracked.stderr || tracked.error?.message}`);
+    throw new Error(`unable to enumerate tracked Diagramify files: ${tracked.stderr || tracked.error?.message}`);
   }
   return tracked.stdout.split('\0').filter(Boolean);
 }
 
-function stageCleanArchify(dest) {
-  const validators = path.join(archifySource, 'renderers/shared/generated-validators.mjs');
+function stageCleanDiagramify(dest) {
+  const validators = path.join(diagramifySource, 'renderers/shared/generated-validators.mjs');
   if (!fs.existsSync(validators)) {
-    throw new Error('generated validators are missing — run npm run generate:validators in archify/');
+    throw new Error('generated validators are missing — run npm run generate:validators in diagramify/');
   }
-  for (const repoRelative of trackedArchifyFiles()) {
+  for (const repoRelative of trackedDiagramifyFiles()) {
     const src = path.join(repoRoot, ...repoRelative.split('/'));
-    if (excludeFromCleanSkill(archifySource, src)) continue;
-    const destination = path.join(dest, path.relative(archifySource, src));
+    if (excludeFromCleanSkill(diagramifySource, src)) continue;
+    const destination = path.join(dest, path.relative(diagramifySource, src));
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(src, destination);
   }
@@ -64,10 +64,10 @@ function stageCleanArchify(dest) {
 
 const json = process.argv.includes('--json');
 const out = argValue('--out');
-const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-dsh-pack-'));
+const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'diagramify-dsh-pack-'));
 
 try {
-  stageCleanArchify(path.join(stage, 'skills', 'archify'));
+  stageCleanDiagramify(path.join(stage, 'skills', 'diagramify'));
   fs.copyFileSync(path.join(integrationRoot, 'package.json'), path.join(stage, 'package.json'));
   fs.copyFileSync(path.join(integrationRoot, 'cordis.patch.yml'), path.join(stage, 'cordis.patch.yml'));
   fs.cpSync(path.join(integrationRoot, 'lib'), path.join(stage, 'lib'), { recursive: true });
@@ -99,7 +99,7 @@ try {
     } else if (parsed?.name) {
       packMeta = parsed;
     } else {
-      packMeta = Object.values(parsed || {}).find((entry) => entry?.name === '@tt-a1i/archify-dsh') || {};
+      packMeta = Object.values(parsed || {}).find((entry) => entry?.name === '@rajivmehtaflex/diagramify-dsh') || {};
     }
   } catch {
     packMeta = {};
@@ -112,7 +112,7 @@ try {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(path.join(stage, produced), destination);
   const result = {
-    name: packMeta.name || '@tt-a1i/archify-dsh',
+    name: packMeta.name || '@rajivmehtaflex/diagramify-dsh',
     version: packMeta.version || '0.1.0',
     filename: path.basename(destination),
     destination,

@@ -24,8 +24,8 @@ const FORBIDDEN = [
 ];
 
 function packTarball() {
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-dsh-tarball-'));
-  const out = path.join(scratch, 'tt-a1i-archify-dsh-0.1.0.tgz');
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'diagramify-dsh-tarball-'));
+  const out = path.join(scratch, 'rajivmehtaflex-diagramify-dsh-0.1.0.tgz');
   const result = spawnSync(process.execPath, [packScript, '--out', out, '--json'], {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -38,7 +38,7 @@ test('pack command emits a real npm tarball with the expected identity and file 
   try {
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const receipt = JSON.parse(result.stdout);
-    assert.equal(receipt.name, '@tt-a1i/archify-dsh');
+    assert.equal(receipt.name, '@rajivmehtaflex/diagramify-dsh');
     assert.equal(receipt.version, '0.1.0');
     assert.equal(fs.existsSync(out), true);
     const files = receipt.files.map((file) => file.path.replace(/^package\//, ''));
@@ -48,13 +48,13 @@ test('pack command emits a real npm tarball with the expected identity and file 
       'lib/index.js',
       'README.md',
       'LICENSE',
-      'skills/archify/SKILL.md',
-      'skills/archify/bin/archify.mjs',
+      'skills/diagramify/SKILL.md',
+      'skills/diagramify/bin/diagramify.mjs',
     ]) {
       assert.ok(files.includes(required), `tarball missing ${required}`);
     }
-    const skillEntries = files.filter((file) => file === 'skills/archify/SKILL.md' || file.endsWith('/SKILL.md'));
-    assert.deepEqual(skillEntries, ['skills/archify/SKILL.md']);
+    const skillEntries = files.filter((file) => file === 'skills/diagramify/SKILL.md' || file.endsWith('/SKILL.md'));
+    assert.deepEqual(skillEntries, ['skills/diagramify/SKILL.md']);
     for (const file of files) {
       for (const forbidden of FORBIDDEN) {
         assert.equal(file.includes(forbidden), false, `tarball contains forbidden ${file}`);
@@ -66,9 +66,11 @@ test('pack command emits a real npm tarball with the expected identity and file 
   }
 });
 
-test('packed Skill payload matches the existing ZIP clean-staging contract', () => {
+test('packed Skill payload matches the existing ZIP clean-staging contract', {
+  skip: process.versions.node.split('.')[0] !== '22' ? 'canonical ZIP builds require Node 22' : false,
+}, () => {
   const { scratch, out, result } = packTarball();
-  const zipScratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-dsh-zip-stage-'));
+  const zipScratch = fs.mkdtempSync(path.join(os.tmpdir(), 'diagramify-dsh-zip-stage-'));
   try {
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const packedRoot = path.join(scratch, 'packed');
@@ -78,7 +80,7 @@ test('packed Skill payload matches the existing ZIP clean-staging contract', () 
       encoding: 'utf8',
     });
     assert.equal(tar.status, 0, tar.stderr);
-    const zipPath = path.join(zipScratch, 'archify.zip');
+    const zipPath = path.join(zipScratch, 'diagramify.zip');
     const zip = spawnSync('bash', [path.join(repoRoot, 'scripts', 'build-zip.sh'), zipPath], {
       cwd: repoRoot,
       encoding: 'utf8',
@@ -90,8 +92,8 @@ test('packed Skill payload matches the existing ZIP clean-staging contract', () 
     assert.equal(unzip.status, 0, unzip.stderr);
     const diff = spawnSync('diff', [
       '-r',
-      path.join(packedRoot, 'package', 'skills', 'archify'),
-      path.join(zipRoot, 'archify'),
+      path.join(packedRoot, 'package', 'skills', 'diagramify'),
+      path.join(zipRoot, 'diagramify'),
     ], { encoding: 'utf8' });
     assert.equal(diff.status, 0, diff.stdout || diff.stderr);
   } finally {

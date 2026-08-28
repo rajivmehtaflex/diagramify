@@ -9,11 +9,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const defaultPackageRoot = process.env.RUNNER_TEMP
-  ? path.join(process.env.RUNNER_TEMP, 'archify-package', 'archify')
-  : path.join(repoRoot, 'archify');
+  ? path.join(process.env.RUNNER_TEMP, 'diagramify-package', 'diagramify')
+  : path.join(repoRoot, 'diagramify');
 const skillRoot = path.resolve(process.argv[2] || defaultPackageRoot);
-const cli = path.join(skillRoot, 'bin', 'archify.mjs');
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-package-smoke-'));
+const cli = path.join(skillRoot, 'bin', 'diagramify.mjs');
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'diagramify-package-smoke-'));
 
 function requireAbsent(relative) {
   if (fs.existsSync(path.join(skillRoot, relative))) {
@@ -29,7 +29,7 @@ function run(args, options = {}) {
   });
   if (result.status !== 0) {
     throw new Error([
-      `archify ${args.join(' ')} failed with ${result.status}`,
+      `diagramify ${args.join(' ')} failed with ${result.status}`,
       result.stdout,
       result.stderr,
     ].filter(Boolean).join('\n'));
@@ -43,7 +43,7 @@ function runExpectFailure(args, options = {}) {
     encoding: 'utf8',
     ...options,
   });
-  if (result.status === 0) throw new Error(`archify ${args.join(' ')} unexpectedly passed`);
+  if (result.status === 0) throw new Error(`diagramify ${args.join(' ')} unexpectedly passed`);
   return result.stdout;
 }
 
@@ -148,7 +148,7 @@ try {
   const visualSkipped = JSON.parse(runExpectFailure([
     'visual-check', delivered.output, '--json',
   ], {
-    env: { ...process.env, ARCHIFY_CHROME: path.join(scratch, 'missing-chrome') },
+    env: { ...process.env, DIAGRAMIFY_CHROME: path.join(scratch, 'missing-chrome') },
   }));
   if (visualSkipped.status !== 'skipped' || visualSkipped.visualReview !== 'pending'
     || visualSkipped.chrome?.status !== 'unavailable') {

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Build the distributable skill archive from the archify/ folder.
+# Build the distributable skill archive from the diagramify/ folder.
 # Usage: scripts/build-zip.sh [output.zip]
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-out="${1:-$repo_root/archify.zip}"
+out="${1:-$repo_root/diagramify.zip}"
 if [[ "$out" != /* ]]; then
   out="$(pwd)/$out"
 fi
 
-# Runtime consumers support every Node version declared by archify/package.json,
+# Runtime consumers support every Node version declared by diagramify/package.json,
 # but canonical ZIP bytes depend on the Node/zlib toolchain. CI and releases use
 # Node 22, so fail clearly instead of publishing different bytes from another
 # Node major.
@@ -17,7 +17,7 @@ canonical_node_major=22
 node_version="$(node -p 'process.versions.node')"
 node_major="${node_version%%.*}"
 if [[ "$node_major" != "$canonical_node_major" ]]; then
-  echo "canonical archify.zip builds require Node $canonical_node_major (current: $node_version)" >&2
+  echo "canonical diagramify.zip builds require Node $canonical_node_major (current: $node_version)" >&2
   exit 1
 fi
 
@@ -33,8 +33,8 @@ fi
 # installing the skill never requires npm install.
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-if [[ ! -f "$repo_root/archify/renderers/shared/generated-validators.mjs" ]]; then
-  echo 'generated validators are missing — run npm run generate:validators in archify/' >&2
+if [[ ! -f "$repo_root/diagramify/renderers/shared/generated-validators.mjs" ]]; then
+  echo 'generated validators are missing — run npm run generate:validators in diagramify/' >&2
   exit 1
 fi
 while IFS= read -r -d '' record; do
@@ -47,10 +47,10 @@ while IFS= read -r -d '' record; do
     exit 1
   fi
   case "$tracked" in
-    archify/test | archify/test/* | \
-    archify/package-lock.json | \
-    archify/scripts/generate-brand-marks.mjs | \
-    archify/scripts/generate-validators.mjs)
+    diagramify/test | diagramify/test/* | \
+    diagramify/package-lock.json | \
+    diagramify/scripts/generate-brand-marks.mjs | \
+    diagramify/scripts/generate-validators.mjs)
       continue
       ;;
   esac
@@ -76,17 +76,18 @@ while IFS= read -r -d '' record; do
       exit 1
       ;;
   esac
-done < <(git -C "$repo_root" ls-files --stage -z -- archify)
+done < <(git -C "$repo_root" ls-files --stage -z -- diagramify)
 node -e "
   const fs = require('fs');
-  const p = '$stage/archify/package.json';
+  const p = '$stage/diagramify/package.json';
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   delete pkg.scripts;
   delete pkg.devDependencies;
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
 "
-rm -f "$stage/archify/package-lock.json"
+rm -f "$stage/diagramify/package-lock.json"
 
-node "$repo_root/scripts/write-deterministic-zip.mjs" "$stage/archify" "$out"
+node "$repo_root/scripts/write-deterministic-zip.mjs" "$stage/diagramify" "$out"
 
 echo "built $out"
+
