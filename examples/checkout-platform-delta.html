@@ -19459,6 +19459,189 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         Diagramify.presentation.exit();
       }
     });
+
+    // Interactive Explainer Widgets (Decode Simulator &amp; Cache Memory Calculator)
+    (function () {
+      function initSimulator() {
+        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;]&#39;);
+        if (!sim) return;
+        let promptTokens = [];
+        let genTokens = [];
+        try {
+          promptTokens = JSON.parse(sim.getAttribute(&#39;data-prompt-tokens&#39;) || &#39;[]&#39;);
+          genTokens = JSON.parse(sim.getAttribute(&#39;data-gen-tokens&#39;) || &#39;[]&#39;);
+        } catch (_) {}
+        const totalSteps = genTokens.length;
+        let currentStep = 0;
+        let playing = false;
+        let timer = null;
+
+        const stepCounter = sim.querySelector(&#39;[data-sim-step]&#39;);
+        const withCacheOps = sim.querySelector(&#39;[data-sim-with-cache]&#39;);
+        const withoutCacheOps = sim.querySelector(&#39;[data-sim-without-cache]&#39;);
+        const wastedRatio = sim.querySelector(&#39;[data-sim-wasted]&#39;);
+        const cacheTokens = sim.querySelector(&#39;[data-sim-cache-tokens]&#39;);
+        const tokenElements = sim.querySelectorAll(&#39;[data-token-idx]&#39;);
+        const playBtn = sim.querySelector(&#39;[data-sim-play]&#39;);
+        const resetBtn = sim.querySelector(&#39;[data-sim-reset]&#39;);
+
+        function update() {
+          if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
+          const promptCount = promptTokens.length;
+          const totalCurrent = promptCount + currentStep;
+
+          const withOps = promptCount + currentStep;
+          let withoutOps = promptCount;
+          for (let i = 1; i &lt;= currentStep; i++) {
+            withoutOps += (promptCount + i);
+          }
+          const wasted = (withoutOps / withOps).toFixed(1);
+
+          if (withCacheOps) withCacheOps.textContent = withOps;
+          if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
+          if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
+          if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
+
+          tokenElements.forEach((el, idx) =&gt; {
+            const isGen = idx &gt;= promptCount;
+            const genIdx = idx - promptCount;
+            if (isGen) {
+              if (genIdx &lt; currentStep) {
+                el.classList.remove(&#39;t-dim&#39;);
+                el.classList.add(&#39;t-frontend&#39;);
+                el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
+              } else {
+                el.classList.remove(&#39;t-frontend&#39;);
+                el.classList.add(&#39;t-dim&#39;);
+                el.removeAttribute(&#39;font-weight&#39;);
+              }
+            }
+          });
+        }
+
+        function step() {
+          if (currentStep &lt; totalSteps) {
+            currentStep++;
+            update();
+          } else {
+            pause();
+          }
+        }
+
+        function play() {
+          if (currentStep &gt;= totalSteps) currentStep = 0;
+          playing = true;
+          const playText = playBtn ? playBtn.querySelector(&#39;text&#39;) : null;
+          if (playText) playText.textContent = &#39;⏸ Pause&#39;;
+          timer = setInterval(() =&gt; {
+            if (currentStep &lt; totalSteps) {
+              step();
+            } else {
+              pause();
+            }
+          }, 350);
+        }
+
+        function pause() {
+          playing = false;
+          if (timer) clearInterval(timer);
+          timer = null;
+          const playText = playBtn ? playBtn.querySelector(&#39;text&#39;) : null;
+          if (playText) playText.textContent = &#39;▶ Play&#39;;
+        }
+
+        if (playBtn) {
+          playBtn.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            if (playing) pause();
+            else play();
+          });
+        }
+        if (resetBtn) {
+          resetBtn.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            pause();
+            currentStep = 0;
+            update();
+          });
+        }
+        update();
+      }
+
+      function initCalculator() {
+        const calc = document.querySelector(&#39;[data-widget=&quot;cache-calculator&quot;]&#39;);
+        if (!calc) return;
+        let models = [];
+        try {
+          models = JSON.parse(calc.getAttribute(&#39;data-models&#39;) || &#39;[]&#39;);
+        } catch (_) {}
+        if (!models.length) {
+          models = [{ name: &#39;7B — 32 layers, 32 heads&#39;, layers: 32, heads: 32, head_dim: 128, weights_gb: 13.0 }];
+        }
+
+        let context = 4096;
+        let batch = 1;
+        let kvHeads = 32;
+
+        const ctxVal = calc.querySelector(&#39;[data-calc-context-val]&#39;);
+        const batchVal = calc.querySelector(&#39;[data-calc-batch-val]&#39;);
+        const headsVal = calc.querySelector(&#39;[data-calc-heads-val]&#39;);
+        const kvDisplay = calc.querySelector(&#39;[data-calc-kv-res]&#39;);
+        const weightDisplay = calc.querySelector(&#39;[data-calc-weight-res]&#39;);
+        const ratioDisplay = calc.querySelector(&#39;[data-calc-ratio-res]&#39;);
+
+        function recalc() {
+          const model = models[0];
+          if (ctxVal) ctxVal.textContent = context.toLocaleString();
+          if (batchVal) batchVal.textContent = batch;
+          if (headsVal) headsVal.textContent = kvHeads + &#39; / &#39; + model.heads;
+
+          const kvBytes = 2 * model.layers * kvHeads * model.head_dim * context * batch * 2;
+          const kvGb = (kvBytes / 1e9);
+          const kvFormatted = kvGb &lt; 1 ? (kvGb * 1024).toFixed(0) + &#39; MB&#39; : kvGb.toFixed(2) + &#39; GB&#39;;
+          const weightGb = model.weights_gb;
+          const ratio = ((kvGb / weightGb) * 100).toFixed(0);
+
+          if (kvDisplay) kvDisplay.textContent = kvFormatted;
+          if (weightDisplay) weightDisplay.textContent = weightGb.toFixed(1) + &#39; GB&#39;;
+          if (ratioDisplay) ratioDisplay.textContent = &#39;The cache is &#39; + ratio + &#39;% of the model weights\&#39; size at this setting.&#39;;
+        }
+
+        // Toggle context on click
+        if (ctxVal) {
+          ctxVal.style.cursor = &#39;pointer&#39;;
+          ctxVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            context = context === 4096 ? 8192 : (context === 8192 ? 16384 : (context === 16384 ? 32768 : 4096));
+            recalc();
+          });
+        }
+        if (batchVal) {
+          batchVal.style.cursor = &#39;pointer&#39;;
+          batchVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            batch = batch === 1 ? 4 : (batch === 4 ? 8 : (batch === 8 ? 16 : 1));
+            recalc();
+          });
+        }
+        if (headsVal) {
+          headsVal.style.cursor = &#39;pointer&#39;;
+          headsVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            kvHeads = kvHeads === 32 ? 8 : (kvHeads === 8 ? 1 : 32);
+            recalc();
+          });
+        }
+        recalc();
+      }
+
+      if (document.readyState === &#39;loading&#39;) {
+        document.addEventListener(&#39;DOMContentLoaded&#39;, () =&gt; { initSimulator(); initCalculator(); });
+      } else {
+        initSimulator();
+        initCalculator();
+      }
+    })();
   &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
@@ -34389,6 +34572,189 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         Diagramify.presentation.exit();
       }
     });
+
+    // Interactive Explainer Widgets (Decode Simulator &amp; Cache Memory Calculator)
+    (function () {
+      function initSimulator() {
+        const sim = document.querySelector(&#39;[data-widget=&quot;decode-simulator&quot;]&#39;);
+        if (!sim) return;
+        let promptTokens = [];
+        let genTokens = [];
+        try {
+          promptTokens = JSON.parse(sim.getAttribute(&#39;data-prompt-tokens&#39;) || &#39;[]&#39;);
+          genTokens = JSON.parse(sim.getAttribute(&#39;data-gen-tokens&#39;) || &#39;[]&#39;);
+        } catch (_) {}
+        const totalSteps = genTokens.length;
+        let currentStep = 0;
+        let playing = false;
+        let timer = null;
+
+        const stepCounter = sim.querySelector(&#39;[data-sim-step]&#39;);
+        const withCacheOps = sim.querySelector(&#39;[data-sim-with-cache]&#39;);
+        const withoutCacheOps = sim.querySelector(&#39;[data-sim-without-cache]&#39;);
+        const wastedRatio = sim.querySelector(&#39;[data-sim-wasted]&#39;);
+        const cacheTokens = sim.querySelector(&#39;[data-sim-cache-tokens]&#39;);
+        const tokenElements = sim.querySelectorAll(&#39;[data-token-idx]&#39;);
+        const playBtn = sim.querySelector(&#39;[data-sim-play]&#39;);
+        const resetBtn = sim.querySelector(&#39;[data-sim-reset]&#39;);
+
+        function update() {
+          if (stepCounter) stepCounter.textContent = &#39;step &#39; + currentStep + &#39; / &#39; + totalSteps;
+          const promptCount = promptTokens.length;
+          const totalCurrent = promptCount + currentStep;
+
+          const withOps = promptCount + currentStep;
+          let withoutOps = promptCount;
+          for (let i = 1; i &lt;= currentStep; i++) {
+            withoutOps += (promptCount + i);
+          }
+          const wasted = (withoutOps / withOps).toFixed(1);
+
+          if (withCacheOps) withCacheOps.textContent = withOps;
+          if (withoutCacheOps) withoutCacheOps.textContent = withoutOps;
+          if (wastedRatio) wastedRatio.textContent = wasted + &#39;×&#39;;
+          if (cacheTokens) cacheTokens.textContent = totalCurrent + &#39; tokens stored&#39;;
+
+          tokenElements.forEach((el, idx) =&gt; {
+            const isGen = idx &gt;= promptCount;
+            const genIdx = idx - promptCount;
+            if (isGen) {
+              if (genIdx &lt; currentStep) {
+                el.classList.remove(&#39;t-dim&#39;);
+                el.classList.add(&#39;t-frontend&#39;);
+                el.setAttribute(&#39;font-weight&#39;, &#39;600&#39;);
+              } else {
+                el.classList.remove(&#39;t-frontend&#39;);
+                el.classList.add(&#39;t-dim&#39;);
+                el.removeAttribute(&#39;font-weight&#39;);
+              }
+            }
+          });
+        }
+
+        function step() {
+          if (currentStep &lt; totalSteps) {
+            currentStep++;
+            update();
+          } else {
+            pause();
+          }
+        }
+
+        function play() {
+          if (currentStep &gt;= totalSteps) currentStep = 0;
+          playing = true;
+          const playText = playBtn ? playBtn.querySelector(&#39;text&#39;) : null;
+          if (playText) playText.textContent = &#39;⏸ Pause&#39;;
+          timer = setInterval(() =&gt; {
+            if (currentStep &lt; totalSteps) {
+              step();
+            } else {
+              pause();
+            }
+          }, 350);
+        }
+
+        function pause() {
+          playing = false;
+          if (timer) clearInterval(timer);
+          timer = null;
+          const playText = playBtn ? playBtn.querySelector(&#39;text&#39;) : null;
+          if (playText) playText.textContent = &#39;▶ Play&#39;;
+        }
+
+        if (playBtn) {
+          playBtn.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            if (playing) pause();
+            else play();
+          });
+        }
+        if (resetBtn) {
+          resetBtn.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            pause();
+            currentStep = 0;
+            update();
+          });
+        }
+        update();
+      }
+
+      function initCalculator() {
+        const calc = document.querySelector(&#39;[data-widget=&quot;cache-calculator&quot;]&#39;);
+        if (!calc) return;
+        let models = [];
+        try {
+          models = JSON.parse(calc.getAttribute(&#39;data-models&#39;) || &#39;[]&#39;);
+        } catch (_) {}
+        if (!models.length) {
+          models = [{ name: &#39;7B — 32 layers, 32 heads&#39;, layers: 32, heads: 32, head_dim: 128, weights_gb: 13.0 }];
+        }
+
+        let context = 4096;
+        let batch = 1;
+        let kvHeads = 32;
+
+        const ctxVal = calc.querySelector(&#39;[data-calc-context-val]&#39;);
+        const batchVal = calc.querySelector(&#39;[data-calc-batch-val]&#39;);
+        const headsVal = calc.querySelector(&#39;[data-calc-heads-val]&#39;);
+        const kvDisplay = calc.querySelector(&#39;[data-calc-kv-res]&#39;);
+        const weightDisplay = calc.querySelector(&#39;[data-calc-weight-res]&#39;);
+        const ratioDisplay = calc.querySelector(&#39;[data-calc-ratio-res]&#39;);
+
+        function recalc() {
+          const model = models[0];
+          if (ctxVal) ctxVal.textContent = context.toLocaleString();
+          if (batchVal) batchVal.textContent = batch;
+          if (headsVal) headsVal.textContent = kvHeads + &#39; / &#39; + model.heads;
+
+          const kvBytes = 2 * model.layers * kvHeads * model.head_dim * context * batch * 2;
+          const kvGb = (kvBytes / 1e9);
+          const kvFormatted = kvGb &lt; 1 ? (kvGb * 1024).toFixed(0) + &#39; MB&#39; : kvGb.toFixed(2) + &#39; GB&#39;;
+          const weightGb = model.weights_gb;
+          const ratio = ((kvGb / weightGb) * 100).toFixed(0);
+
+          if (kvDisplay) kvDisplay.textContent = kvFormatted;
+          if (weightDisplay) weightDisplay.textContent = weightGb.toFixed(1) + &#39; GB&#39;;
+          if (ratioDisplay) ratioDisplay.textContent = &#39;The cache is &#39; + ratio + &#39;% of the model weights\&#39; size at this setting.&#39;;
+        }
+
+        // Toggle context on click
+        if (ctxVal) {
+          ctxVal.style.cursor = &#39;pointer&#39;;
+          ctxVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            context = context === 4096 ? 8192 : (context === 8192 ? 16384 : (context === 16384 ? 32768 : 4096));
+            recalc();
+          });
+        }
+        if (batchVal) {
+          batchVal.style.cursor = &#39;pointer&#39;;
+          batchVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            batch = batch === 1 ? 4 : (batch === 4 ? 8 : (batch === 8 ? 16 : 1));
+            recalc();
+          });
+        }
+        if (headsVal) {
+          headsVal.style.cursor = &#39;pointer&#39;;
+          headsVal.addEventListener(&#39;click&#39;, (e) =&gt; {
+            e.stopPropagation();
+            kvHeads = kvHeads === 32 ? 8 : (kvHeads === 8 ? 1 : 32);
+            recalc();
+          });
+        }
+        recalc();
+      }
+
+      if (document.readyState === &#39;loading&#39;) {
+        document.addEventListener(&#39;DOMContentLoaded&#39;, () =&gt; { initSimulator(); initCalculator(); });
+      } else {
+        initSimulator();
+        initCalculator();
+      }
+    })();
   &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;

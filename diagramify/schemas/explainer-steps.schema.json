@@ -4,7 +4,11 @@
   "title": "Diagramify Explainer Steps Diagram",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "diagram_type", "meta", "steps"],
+  "required": ["schema_version", "diagram_type", "meta"],
+  "anyOf": [
+    { "required": ["steps"], "properties": { "steps": { "type": "array" } } },
+    { "required": ["sections"], "properties": { "sections": { "type": "array" } } }
+  ],
   "properties": {
     "schema_version": { "const": 1 },
     "diagram_type": { "const": "explainer-steps" },
@@ -15,6 +19,10 @@
       "properties": {
         "title": { "type": "string", "minLength": 1 },
         "subtitle": { "type": "string" },
+        "topic_tags": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 32 }
+        },
         "output": { "type": "string" },
         "locale": { "$ref": "common.schema.json#/$defs/locale" },
         "animation": { "enum": ["trace", "none"] },
@@ -47,30 +55,125 @@
     "steps": {
       "type": "array",
       "minItems": 2,
+      "items": { "$ref": "#/$defs/stepItem" }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "type", "label"],
+        "required": ["kind"],
         "properties": {
+          "kind": { "enum": ["tldr", "narrative", "simulator", "chart", "calculator", "grid_cards", "steps"] },
           "id": { "$ref": "common.schema.json#/$defs/id" },
-          "type": { "enum": ["start", "active", "waiting", "decision", "success", "failure", "neutral", "external"] },
-          "label": { "type": "string", "minLength": 1, "maxLength": 60 },
-          "sublabel": { "type": "string", "maxLength": 80 },
-          "tag": { "type": "string", "maxLength": 24 },
-          "description": { "type": "string", "maxLength": 320 },
-          "math": { "type": "string", "maxLength": 200 },
-          "code": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["content"],
-            "properties": {
-              "language": { "type": "string", "maxLength": 24 },
-              "content": { "type": "string", "maxLength": 600 }
+          "number": { "type": "string", "maxLength": 8 },
+          "title": { "type": "string", "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 500 },
+          "content": { "type": "string", "maxLength": 1000 },
+          "paragraphs": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 1000 }
+          },
+          "formula": { "type": "string", "maxLength": 300 },
+          "prompt_tokens": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 30 }
+          },
+          "generated_tokens": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 30 }
+          },
+          "total_steps": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "x_label": { "type": "string", "maxLength": 40 },
+          "y_label": { "type": "string", "maxLength": 40 },
+          "max_x": { "type": "integer", "minimum": 2, "maximum": 100 },
+          "curves": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "type"],
+              "properties": {
+                "label": { "type": "string", "maxLength": 40 },
+                "type": { "enum": ["linear", "quadratic", "exponential"] },
+                "color": { "type": "string", "maxLength": 20 },
+                "style": { "enum": ["solid", "dashed"] }
+              }
             }
+          },
+          "footer_note": { "type": "string", "maxLength": 300 },
+          "model_options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "layers", "heads", "head_dim", "weights_gb"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 40 },
+                "layers": { "type": "integer", "minimum": 1 },
+                "heads": { "type": "integer", "minimum": 1 },
+                "head_dim": { "type": "integer", "minimum": 1 },
+                "weights_gb": { "type": "number", "minimum": 0 }
+              }
+            }
+          },
+          "context_min": { "type": "integer", "minimum": 1 },
+          "context_max": { "type": "integer", "minimum": 100 },
+          "context_default": { "type": "integer", "minimum": 1 },
+          "batch_max": { "type": "integer", "minimum": 1 },
+          "batch_default": { "type": "integer", "minimum": 1 },
+          "heads_default": { "type": "integer", "minimum": 1 },
+          "note": { "type": "string", "maxLength": 300 },
+          "columns": { "enum": [2, 3] },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["title", "description"],
+              "properties": {
+                "eyebrow": { "type": "string", "maxLength": 40 },
+                "title": { "type": "string", "maxLength": 80 },
+                "description": { "type": "string", "maxLength": 400 },
+                "tag": { "type": "string", "maxLength": 24 },
+                "highlight": { "type": "boolean" }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/stepItem" }
           }
         }
       }
     },
     "cards": { "$ref": "common.schema.json#/$defs/cards" }
+  },
+  "$defs": {
+    "stepItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "label"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/id" },
+        "type": { "enum": ["start", "active", "waiting", "decision", "success", "failure", "neutral", "external"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "sublabel": { "type": "string", "maxLength": 80 },
+        "tag": { "type": "string", "maxLength": 24 },
+        "description": { "type": "string", "maxLength": 320 },
+        "math": { "type": "string", "maxLength": 200 },
+        "code": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["content"],
+          "properties": {
+            "language": { "type": "string", "maxLength": 24 },
+            "content": { "type": "string", "maxLength": 600 }
+          }
+        }
+      }
+    }
   }
 }

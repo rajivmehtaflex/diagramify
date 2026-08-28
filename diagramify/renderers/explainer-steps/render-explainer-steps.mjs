@@ -51,11 +51,6 @@ const textClass = {
   external: 't-muted',
 };
 
-// Single-purpose word-wrap for step descriptions. text-fit.mjs is
-// deliberately single-line (labels/sublabels/tags never wrap); descriptions
-// are prose, so they need their own multi-line wrapper, measured in the same
-// CJK-aware "text units" the rest of the codebase uses. Code and math are
-// verbatim (see splitVerbatimLines) — never run through this function.
 function wrapDescription(text, maxUnitsPerLine) {
   const words = String(text ?? '').split(/\s+/).filter(Boolean);
   const lines = [];
@@ -77,9 +72,6 @@ function wrapDescription(text, maxUnitsPerLine) {
   return lines;
 }
 
-// Code and math preserve the author's own line breaks — re-wrapping source
-// code or a multi-line derivation would silently corrupt its meaning, unlike
-// prose where re-wrapping is purely cosmetic.
 function splitVerbatimLines(text) {
   return String(text ?? '').split('\n');
 }
@@ -96,13 +88,77 @@ function measureStep(step) {
   return { ...step, descLines, mathLines, codeLines, height };
 }
 
-const measuredSteps = asArray(explainer.steps).map(measureStep);
+// Check whether this explainer uses modular sections or classic flat steps
+const hasSections = Array.isArray(explainer.sections) && explainer.sections.length > 0;
+const measuredSteps = !hasSections ? asArray(explainer.steps).map(measureStep) : [];
 const steps = new Map();
+
+// Layout measurement for sections or classic steps
 let cursorY = TOP_MARGIN;
-for (const step of measuredSteps) {
-  steps.set(step.id, { ...step, x: CARD_X, y: cursorY, width: CARD_WIDTH });
-  cursorY += step.height + CARD_GAP;
+if (Array.isArray(explainer.meta?.topic_tags) && explainer.meta.topic_tags.length > 0) {
+  cursorY += 28;
 }
+
+const measuredSections = [];
+
+if (hasSections) {
+  for (const sec of explainer.sections) {
+    let secHeight = 0;
+    const kind = sec.kind;
+    if (kind === 'tldr') {
+      const contentLines = wrapDescription(sec.content, DESC_MAX_UNITS - 6);
+      secHeight = 44 + contentLines.length * LINE_H + CARD_PADDING;
+      measuredSections.push({ ...sec, contentLines, y: cursorY, height: secHeight });
+    } else if (kind === 'narrative') {
+      const allParaLines = (sec.paragraphs || []).map((p) => wrapDescription(p, DESC_MAX_UNITS));
+      const totalParaLines = allParaLines.reduce((acc, lines) => acc + lines.length, 0);
+      const formulaH = sec.formula ? 44 : 0;
+      secHeight = 36 + totalParaLines * LINE_H + (allParaLines.length > 1 ? (allParaLines.length - 1) * 12 : 0) + formulaH + CARD_PADDING;
+      measuredSections.push({ ...sec, allParaLines, y: cursorY, height: secHeight });
+    } else if (kind === 'simulator') {
+      const descLines = sec.description ? wrapDescription(sec.description, DESC_MAX_UNITS) : [];
+      secHeight = 40 + (descLines.length ? descLines.length * LINE_H + 12 : 0) + 195 + CARD_PADDING;
+      measuredSections.push({ ...sec, descLines, y: cursorY, height: secHeight });
+    } else if (kind === 'chart') {
+      const footerLines = sec.footer_note ? wrapDescription(sec.footer_note, DESC_MAX_UNITS) : [];
+      secHeight = 220 + (footerLines.length ? footerLines.length * LINE_H + 14 : 0) + CARD_PADDING;
+      measuredSections.push({ ...sec, footerLines, y: cursorY, height: secHeight });
+    } else if (kind === 'calculator') {
+      const descLines = sec.description ? wrapDescription(sec.description, DESC_MAX_UNITS) : [];
+      const formulaH = sec.formula ? 38 : 0;
+      secHeight = 40 + (descLines.length ? descLines.length * LINE_H + 12 : 0) + formulaH + 215 + CARD_PADDING;
+      measuredSections.push({ ...sec, descLines, y: cursorY, height: secHeight });
+    } else if (kind === 'grid_cards') {
+      const descLines = sec.description ? wrapDescription(sec.description, DESC_MAX_UNITS) : [];
+      const cols = sec.columns || (sec.cards?.length === 2 ? 2 : 3);
+      const colWidth = Math.floor((CARD_WIDTH - (cols - 1) * 14) / cols);
+      const measuredCards = (sec.cards || []).map((c) => {
+        const cLines = wrapDescription(c.description, Math.floor(colWidth / 7.2));
+        const cH = 46 + cLines.length * 13 + 18;
+        return { ...c, cLines, height: cH };
+      });
+      const maxCardH = Math.max(...measuredCards.map((c) => c.height), 110);
+      secHeight = 40 + (descLines.length ? descLines.length * LINE_H + 12 : 0) + maxCardH + CARD_PADDING;
+      measuredSections.push({ ...sec, descLines, cols, colWidth, measuredCards, maxCardH, y: cursorY, height: secHeight });
+    } else if (kind === 'steps') {
+      const items = (sec.items || []).map(measureStep);
+      let stepY = cursorY + 36;
+      for (const st of items) {
+        steps.set(st.id, { ...st, x: CARD_X, y: stepY, width: CARD_WIDTH });
+        stepY += st.height + CARD_GAP;
+      }
+      secHeight = (stepY - cursorY) + CARD_PADDING;
+      measuredSections.push({ ...sec, items, y: cursorY, height: secHeight });
+    }
+    cursorY += secHeight + CARD_GAP;
+  }
+} else {
+  for (const step of measuredSteps) {
+    steps.set(step.id, { ...step, x: CARD_X, y: cursorY, width: CARD_WIDTH });
+    cursorY += step.height + CARD_GAP;
+  }
+}
+
 const viewBoxHeight = Math.max(320, cursorY - CARD_GAP + LEGEND_RESERVE);
 const viewBox = [VIEWBOX_WIDTH, viewBoxHeight];
 
@@ -111,9 +167,11 @@ function validateExplainerSteps() {
   if (explainer.schema_version !== 1) problems.push('Explainer-steps files must set "schema_version": 1.');
   if (explainer.diagram_type !== 'explainer-steps') problems.push('Explainer-steps files must set "diagram_type": "explainer-steps".');
   if (!explainer.meta?.title) problems.push('Explainer-steps files must include meta.title.');
-  if (!Array.isArray(explainer.steps) || explainer.steps.length < 2) problems.push('Explainer-steps diagrams need at least two steps.');
-  if (explainer.cards !== undefined && !Array.isArray(explainer.cards)) problems.push('Explainer-steps "cards" must be an array.');
-  if (steps.size !== asArray(explainer.steps).length) problems.push('Step ids must be unique.');
+  
+  if (!hasSections) {
+    if (!Array.isArray(explainer.steps) || explainer.steps.length < 2) problems.push('Explainer-steps diagrams need at least two steps.');
+    if (steps.size !== asArray(explainer.steps).length) problems.push('Step ids must be unique.');
+  }
 
   for (const step of steps.values()) {
     if (!isFinitePoint(step.x, step.y, step.width, step.height)) {
@@ -128,12 +186,6 @@ function validateExplainerSteps() {
   }
 }
 
-// Renders step.code as a distinct monospace block: a backdrop rect (reusing
-// the existing theme-aware .c-mask class, the same "occlusion panel" pattern
-// every other renderer already uses under text) plus one <text> per source
-// line. No syntax highlighting — every diagramify SVG already renders in a
-// monospace font stack (assets/template.html:354), so code reads correctly
-// without one.
 function renderCodeBlock(step, startY) {
   if (!step.codeLines.length) return { markup: '', nextY: startY };
   const blockHeight = CODE_HEADER_H + step.codeLines.length * CODE_LINE_H + 10;
@@ -143,14 +195,9 @@ function renderCodeBlock(step, startY) {
   const markup = `
           <rect x="${step.x + TEXT_X_OFFSET - 4}" y="${startY - 10}" width="${step.width - TEXT_X_OFFSET - 8}" height="${blockHeight}" rx="4" class="c-mask"/>
           <text data-detail="fine" x="${step.x + TEXT_X_OFFSET + 8}" y="${startY + 2}" class="t-dim" font-size="7" font-weight="700">${esc(headerText.toUpperCase())}</text>${lines}`;
-  // NOTE: nextY is currently unused (code is always the last block in stacking order).
-  // If code blocks ever appear mid-stack, double-check that spacing constants here sync with measureStep.
   return { markup, nextY: startY + blockHeight + 8 };
 }
 
-// Renders step.math as italic, non-boxed lines directly beneath the
-// description — visually distinct from both prose (upright, wrapped) and
-// code (boxed, upright) without adding a real math typesetting engine.
 function renderMathBlock(step, startY) {
   if (!step.mathLines.length) return { markup: '', nextY: startY };
   const lines = step.mathLines.map((line, index) => `
@@ -194,11 +241,325 @@ function renderStep(step, index, total) {
         </g>${connector}`;
 }
 
+// --- SECTION COMPONENT RENDERERS ---
+
+function renderTopicTagsHeader() {
+  if (!Array.isArray(explainer.meta?.topic_tags) || !explainer.meta.topic_tags.length) return '';
+  const text = explainer.meta.topic_tags.map((t) => t.toUpperCase()).join(' · ');
+  return `        <text data-detail="fine" x="${CARD_X}" y="${TOP_MARGIN - 18}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1.5">${esc(text)}</text>`;
+}
+
+function renderTldrBlock(sec) {
+  const textLines = sec.contentLines.map((line, idx) => `
+          <text data-detail="context" x="${CARD_X + 24}" y="${sec.y + 44 + idx * LINE_H}" class="t-muted" font-size="9">${esc(line)}</text>`).join('');
+  return `        <!-- TL;DR Section -->
+        <g id="section-tldr" class="explainer-tldr">
+          <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-mask"/>
+          <rect x="${CARD_X}" y="${sec.y}" width="${CARD_WIDTH}" height="${sec.height - CARD_PADDING}" rx="8" class="c-database" stroke-width="1.5"/>
+          <text data-detail="fine" x="${CARD_X + 24}" y="${sec.y + 24}" class="t-database" font-size="8" font-weight="700" letter-spacing="1">TL;DR</text>
+          ${textLines}
+        </g>`;
+}
+
+function renderNarrativeBlock(sec) {
+  const numBadge = sec.number
+    ? `<text data-detail="fine" x="${CARD_X}" y="${sec.y + 18}" class="t-frontend" font-size="11" font-weight="700">${esc(sec.number)}</text>
+       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || '')}</text>`
+    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || '')}</text>`;
+
+  let curY = sec.y + 38;
+  const paraMarkup = (sec.allParaLines || []).map((lines) => {
+    const linesStr = lines.map((l, i) => `
+          <text data-detail="context" x="${CARD_X}" y="${curY + i * LINE_H}" class="t-muted" font-size="9">${esc(l)}</text>`).join('');
+    curY += lines.length * LINE_H + 12;
+    return linesStr;
+  }).join('');
+
+  let formulaMarkup = '';
+  if (sec.formula) {
+    formulaMarkup = `
+          <rect x="${CARD_X}" y="${curY}" width="${CARD_WIDTH}" height="32" rx="6" class="c-mask"/>
+          <rect x="${CARD_X}" y="${curY}" width="${CARD_WIDTH}" height="32" rx="6" class="c-cloud" stroke-width="1"/>
+          <text data-detail="context" x="${CARD_X + 16}" y="${curY + 20}" class="t-cloud" font-size="10" font-weight="600" font-family="monospace">${esc(sec.formula)}</text>`;
+  }
+
+  return `        <!-- Narrative Section -->
+        <g id="section-${esc(sec.id || sec.number || 'narrative')}">
+          ${numBadge}
+          ${paraMarkup}
+          ${formulaMarkup}
+        </g>`;
+}
+
+function renderSimulatorBlock(sec) {
+  const numBadge = sec.number
+    ? `<text data-detail="fine" x="${CARD_X}" y="${sec.y + 18}" class="t-frontend" font-size="11" font-weight="700">${esc(sec.number)}</text>
+       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || 'Step through it yourself')}</text>`
+    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || 'Step through it yourself')}</text>`;
+
+  let curY = sec.y + 36;
+  const descMarkup = (sec.descLines || []).map((l, i) => `
+          <text data-detail="context" x="${CARD_X}" y="${curY + i * LINE_H}" class="t-muted" font-size="9">${esc(l)}</text>`).join('');
+  if (sec.descLines?.length) curY += sec.descLines.length * LINE_H + 12;
+
+  const boxY = curY;
+  const boxH = 195;
+  const promptToks = sec.prompt_tokens || ['Explain', 'the', 'KV', 'cache', 'to', 'a', 'reader'];
+  const genToks = sec.generated_tokens || [':', 'each', 'new', 'token', 'reuses', 'every', 'key', 'and', 'value', 'computed', 'before', 'it'];
+
+  return `        <!-- Interactive Decode Simulator -->
+        <g id="section-simulator" class="explainer-simulator" data-widget="decode-simulator"
+           data-prompt-tokens="${esc(JSON.stringify(promptToks))}"
+           data-gen-tokens="${esc(JSON.stringify(genToks))}">
+          ${numBadge}
+          ${descMarkup}
+
+          <!-- Simulator Card Frame -->
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-mask"/>
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-backend" stroke-width="1.5"/>
+
+          <!-- Top Toolbar -->
+          <text data-detail="fine" x="${CARD_X + 20}" y="${boxY + 24}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1">DECODE SIMULATOR</text>
+          
+          <!-- Controls (Reset / Play) -->
+          <g class="sim-ctrl-btn" data-sim-reset="" style="cursor: pointer;">
+            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-mask"/>
+            <rect x="${CARD_X + CARD_WIDTH - 120}" y="${boxY + 12}" width="50" height="18" rx="4" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + CARD_WIDTH - 95}" y="${boxY + 24}" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Reset</text>
+          </g>
+          <g class="sim-ctrl-btn" data-sim-play="" style="cursor: pointer;">
+            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-mask"/>
+            <rect x="${CARD_X + CARD_WIDTH - 64}" y="${boxY + 12}" width="48" height="18" rx="4" class="c-frontend" stroke-width="1"/>
+            <text x="${CARD_X + CARD_WIDTH - 40}" y="${boxY + 24}" class="t-frontend" font-size="8" font-weight="600" text-anchor="middle">▶ Play</text>
+          </g>
+
+          <text data-sim-step="" x="${CARD_X + CARD_WIDTH - 130}" y="${boxY + 24}" class="t-dim" font-size="8" text-anchor="end">step 0 / ${genToks.length}</text>
+
+          <!-- Token Sequence Strip -->
+          <g class="sim-tokens">
+            <rect x="${CARD_X + 20}" y="${boxY + 42}" width="${CARD_WIDTH - 40}" height="42" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 20}" y="${boxY + 42}" width="${CARD_WIDTH - 40}" height="42" rx="6" class="c-external" stroke-width="0.8" stroke-dasharray="2,2"/>
+            <text x="${CARD_X + 28}" y="${boxY + 58}" font-size="8.5">
+              ${promptToks.map((t, idx) => `<tspan data-token-idx="${idx}" class="t-primary" font-weight="600">${esc(t)} </tspan>`).join('')}
+              ${genToks.map((t, idx) => `<tspan data-token-idx="${promptToks.length + idx}" class="t-dim" data-token-state="dim">${esc(t)} </tspan>`).join('')}
+            </text>
+          </g>
+
+          <!-- 3 Side-by-Side Stat Cards -->
+          <!-- Stat 1: With Cache -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 20}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 30}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">WITH CACHE — TOTAL K,V OPS</text>
+            <text data-sim-with-cache="" x="${CARD_X + 30}" y="${boxY + 134}" class="t-frontend" font-size="16" font-weight="700">${promptToks.length}</text>
+            <text x="${CARD_X + 56}" y="${boxY + 134}" class="t-muted" font-size="8">grows by 1 every step</text>
+          </g>
+
+          <!-- Stat 2: Without Cache -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 222}" y="${boxY + 96}" width="186" height="64" rx="6" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 232}" y="${boxY + 112}" class="t-dim" font-size="7" font-weight="700" letter-spacing="0.5">WITHOUT CACHE — TOTAL K,V OPS</text>
+            <text data-sim-without-cache="" x="${CARD_X + 232}" y="${boxY + 134}" class="t-cloud" font-size="16" font-weight="700">${promptToks.length}</text>
+            <text x="${CARD_X + 258}" y="${boxY + 134}" class="t-muted" font-size="8">recomputes whole sequence</text>
+          </g>
+
+          <!-- Stat 3: Wasted Compute -->
+          <g class="sim-stat-box">
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-mask"/>
+            <rect x="${CARD_X + 424}" y="${boxY + 96}" width="188" height="64" rx="6" class="c-security" stroke-width="1"/>
+            <text x="${CARD_X + 434}" y="${boxY + 112}" class="t-security" font-size="7" font-weight="700" letter-spacing="0.5">EXTRA COMPUTE WASTED</text>
+            <text data-sim-wasted="" x="${CARD_X + 434}" y="${boxY + 134}" class="t-security" font-size="16" font-weight="700">1.0×</text>
+            <text x="${CARD_X + 482}" y="${boxY + 134}" class="t-muted" font-size="8">without cache vs with</text>
+          </g>
+
+          <!-- Bottom Footer Bar -->
+          <text x="${CARD_X + 24}" y="${boxY + 178}" class="t-dim" font-size="8">Cache contents</text>
+          <text data-sim-cache-tokens="" x="${CARD_X + CARD_WIDTH - 24}" y="${boxY + 178}" class="t-frontend" font-size="8" font-weight="600" text-anchor="end">${promptToks.length} tokens stored</text>
+        </g>`;
+}
+
+function renderChartBlock(sec) {
+  const chartY = sec.y + 10;
+  const chartW = CARD_WIDTH;
+  const chartH = 190;
+  const plotX = CARD_X + 50;
+  const plotY = chartY + 20;
+  const plotW = chartW - 70;
+  const plotH = 120;
+
+  // Render Quadratic Curve Path (orange/amber) and Linear Line Path (cyan/teal)
+  // Quadratic: (0, 0) -> (plotW, plotH)
+  const quadPath = `M ${plotX} ${plotY + plotH - 10} Q ${plotX + plotW * 0.5} ${plotY + plotH - 15} ${plotX + plotW} ${plotY + 10}`;
+  const linearPath = `M ${plotX} ${plotY + plotH - 10} L ${plotX + plotW} ${plotY + plotH - 35}`;
+
+  let footerMarkup = '';
+  if (sec.footerLines?.length) {
+    const fY = chartY + chartH + 10;
+    footerMarkup = sec.footerLines.map((l, i) => `
+          <text data-detail="context" x="${CARD_X}" y="${fY + i * LINE_H}" class="t-muted" font-size="8.5">${esc(l)}</text>`).join('');
+  }
+
+  return `        <!-- Complexity Chart -->
+        <g id="section-chart" class="explainer-chart">
+          <!-- Frame Background -->
+          <rect x="${CARD_X}" y="${chartY}" width="${chartW}" height="${chartH}" rx="10" class="c-mask"/>
+          <rect x="${CARD_X}" y="${chartY}" width="${chartW}" height="${chartH}" rx="10" class="c-external" stroke-width="1"/>
+
+          <!-- Y-axis Label -->
+          <text transform="rotate(-90 ${CARD_X + 18} ${plotY + plotH / 2})" x="${CARD_X + 18}" y="${plotY + plotH / 2}" class="t-dim" font-size="7.5" text-anchor="middle">cumulative K,V ops →</text>
+
+          <!-- Grid Lines -->
+          <line x1="${plotX}" y1="${plotY + plotH}" x2="${plotX + plotW}" y2="${plotY + plotH}" class="c-external" stroke-width="1"/>
+          <line x1="${plotX}" y1="${plotY + plotH / 2}" x2="${plotX + plotW}" y2="${plotY + plotH / 2}" class="c-grid" stroke-width="0.8" stroke-dasharray="3,3"/>
+          <line x1="${plotX}" y1="${plotY}" x2="${plotX + plotW}" y2="${plotY}" class="c-grid" stroke-width="0.8" stroke-dasharray="3,3"/>
+
+          <!-- Curves -->
+          <path d="${linearPath}" class="a-emphasis" stroke="#22d3ee" stroke-width="2.5" fill="none"/>
+          <path d="${quadPath}" class="a-security" stroke="#f97316" stroke-width="2.5" fill="none"/>
+
+          <!-- X-axis Label -->
+          <text x="${plotX + plotW / 2}" y="${plotY + plotH + 18}" class="t-dim" font-size="7.5" text-anchor="middle">decode step →</text>
+
+          <!-- Legend -->
+          <circle cx="${plotX + plotW / 2 - 80}" cy="${chartY + chartH - 12}" r="3.5" fill="#22d3ee"/>
+          <text x="${plotX + plotW / 2 - 70}" y="${chartY + chartH - 9}" class="t-muted" font-size="7.5">with cache — linear</text>
+          <circle cx="${plotX + plotW / 2 + 30}" cy="${chartY + chartH - 12}" r="3.5" fill="#f97316"/>
+          <text x="${plotX + plotW / 2 + 40}" y="${chartY + chartH - 9}" class="t-muted" font-size="7.5">without cache — quadratic</text>
+        </g>
+        ${footerMarkup}`;
+}
+
+function renderCalculatorBlock(sec) {
+  const numBadge = sec.number
+    ? `<text data-detail="fine" x="${CARD_X}" y="${sec.y + 18}" class="t-frontend" font-size="11" font-weight="700">${esc(sec.number)}</text>
+       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "What's actually sitting in memory")}</text>`
+    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || "What's actually sitting in memory")}</text>`;
+
+  let curY = sec.y + 36;
+  const descMarkup = (sec.descLines || []).map((l, i) => `
+          <text data-detail="context" x="${CARD_X}" y="${curY + i * LINE_H}" class="t-muted" font-size="9">${esc(l)}</text>`).join('');
+  if (sec.descLines?.length) curY += sec.descLines.length * LINE_H + 12;
+
+  let formulaMarkup = '';
+  if (sec.formula) {
+    formulaMarkup = `
+          <rect x="${CARD_X}" y="${curY}" width="${CARD_WIDTH}" height="30" rx="6" class="c-mask"/>
+          <rect x="${CARD_X}" y="${curY}" width="${CARD_WIDTH}" height="30" rx="6" class="c-database" stroke-width="1"/>
+          <text data-detail="context" x="${CARD_X + 16}" y="${curY + 19}" class="t-database" font-size="9.5" font-weight="600" font-family="monospace">${esc(sec.formula)}</text>`;
+    curY += 38;
+  }
+
+  const boxY = curY;
+  const boxH = 215;
+  const models = sec.model_options || [
+    { name: '7B — 32 layers, 32 heads', layers: 32, heads: 32, head_dim: 128, weights_gb: 13.0 }
+  ];
+
+  return `        <!-- Interactive Cache Memory Calculator -->
+        <g id="section-calculator" class="explainer-calculator" data-widget="cache-calculator"
+           data-models="${esc(JSON.stringify(models))}">
+          ${numBadge}
+          ${descMarkup}
+          ${formulaMarkup}
+
+          <!-- Calculator Frame -->
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-mask"/>
+          <rect x="${CARD_X}" y="${boxY}" width="${CARD_WIDTH}" height="${boxH}" rx="10" class="c-database" stroke-width="1.5"/>
+
+          <text data-detail="fine" x="${CARD_X + 20}" y="${boxY + 24}" class="t-dim" font-size="8" font-weight="700" letter-spacing="1">CACHE MEMORY CALCULATOR</text>
+
+          <!-- Input Rows: Model Size & Context Length -->
+          <!-- Row 1: Model Size -->
+          <text x="${CARD_X + 20}" y="${boxY + 52}" class="t-muted" font-size="8" font-weight="600">Model size</text>
+          <g class="calc-select-box">
+            <rect x="${CARD_X + 20}" y="${boxY + 60}" width="280" height="24" rx="4" class="c-mask"/>
+            <rect x="${CARD_X + 20}" y="${boxY + 60}" width="280" height="24" rx="4" class="c-external" stroke-width="1"/>
+            <text x="${CARD_X + 30}" y="${boxY + 76}" class="t-primary" font-size="8.5">${esc(models[0].name)}</text>
+          </g>
+
+          <!-- Row 1 Right: Context Length -->
+          <text x="${CARD_X + 330}" y="${boxY + 52}" class="t-muted" font-size="8" font-weight="600">Context length</text>
+          <text data-calc-context-val="" x="${CARD_X + CARD_WIDTH - 20}" y="${boxY + 52}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="end">4,096</text>
+          <line x1="${CARD_X + 330}" y1="${boxY + 72}" x2="${CARD_X + CARD_WIDTH - 20}" y2="${boxY + 72}" class="c-external" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="${CARD_X + 430}" cy="${boxY + 72}" r="6" fill="#22d3ee" stroke="#0f172a" stroke-width="1.5"/>
+
+          <!-- Row 2: Batch Size & KV Heads -->
+          <text x="${CARD_X + 20}" y="${boxY + 104}" class="t-muted" font-size="8" font-weight="600">Batch size</text>
+          <text data-calc-batch-val="" x="${CARD_X + 300}" y="${boxY + 104}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="end">1</text>
+          <line x1="${CARD_X + 20}" y1="${boxY + 120}" x2="${CARD_X + 300}" y2="${boxY + 120}" class="c-external" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="${CARD_X + 40}" cy="${boxY + 120}" r="6" fill="#a78bfa" stroke="#0f172a" stroke-width="1.5"/>
+
+          <text x="${CARD_X + 330}" y="${boxY + 104}" class="t-muted" font-size="8" font-weight="600">KV heads</text>
+          <text data-calc-heads-val="" x="${CARD_X + CARD_WIDTH - 20}" y="${boxY + 104}" class="t-primary" font-size="8.5" font-weight="700" text-anchor="end">32 / 32</text>
+          <line x1="${CARD_X + 330}" y1="${boxY + 120}" x2="${CARD_X + CARD_WIDTH - 20}" y2="${boxY + 120}" class="c-external" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="${CARD_X + CARD_WIDTH - 26}" cy="${boxY + 120}" r="6" fill="#a78bfa" stroke="#0f172a" stroke-width="1.5"/>
+
+          <!-- Memory Ratio Output Strip -->
+          <g class="calc-results">
+            <line x1="${CARD_X + 20}" y1="${boxY + 144}" x2="${CARD_X + CARD_WIDTH - 20}" y2="${boxY + 144}" class="c-grid" stroke-width="0.8"/>
+            
+            <text x="${CARD_X + 20}" y="${boxY + 164}" class="t-muted" font-size="8">KV cache</text>
+            <text data-calc-kv-res="" x="${CARD_X + CARD_WIDTH - 20}" y="${boxY + 164}" class="t-frontend" font-size="9" font-weight="700" text-anchor="end">2.15 GB</text>
+
+            <text x="${CARD_X + 20}" y="${boxY + 182}" class="t-muted" font-size="8">Model weights</text>
+            <text data-calc-weight-res="" x="${CARD_X + CARD_WIDTH - 20}" y="${boxY + 182}" class="t-primary" font-size="9" font-weight="700" text-anchor="end">13.0 GB</text>
+
+            <text data-calc-ratio-res="" x="${CARD_X + 20}" y="${boxY + 202}" class="t-dim" font-size="7.5">The cache is 17% of the model weights' size at this setting.</text>
+          </g>
+        </g>`;
+}
+
+function renderGridCardsBlock(sec) {
+  const numBadge = sec.number
+    ? `<text data-detail="fine" x="${CARD_X}" y="${sec.y + 18}" class="t-frontend" font-size="11" font-weight="700">${esc(sec.number)}</text>
+       <text data-node-label="" x="${CARD_X + 26}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || 'How systems push back')}</text>`
+    : `<text data-node-label="" x="${CARD_X}" y="${sec.y + 18}" class="t-primary" font-size="14" font-weight="700">${esc(sec.title || 'How systems push back')}</text>`;
+
+  let curY = sec.y + 36;
+  const descMarkup = (sec.descLines || []).map((l, i) => `
+          <text data-detail="context" x="${CARD_X}" y="${curY + i * LINE_H}" class="t-muted" font-size="9">${esc(l)}</text>`).join('');
+  if (sec.descLines?.length) curY += sec.descLines.length * LINE_H + 12;
+
+  const cols = sec.cols || 3;
+  const colW = sec.colWidth || 198;
+  const cardGap = 14;
+  const maxCardH = sec.maxCardH || 120;
+
+  const cardsMarkup = (sec.measuredCards || []).map((card, idx) => {
+    const cX = CARD_X + (idx % cols) * (colW + cardGap);
+    const cY = curY + Math.floor(idx / cols) * (maxCardH + cardGap);
+    const eyebrow = card.eyebrow
+      ? `<text data-detail="fine" x="${cX + 14}" y="${cY + 18}" class="t-dim" font-size="6.5" font-weight="700" letter-spacing="0.6">${esc(card.eyebrow.toUpperCase())}</text>`
+      : '';
+    const titleY = card.eyebrow ? cY + 34 : cY + 22;
+    const bodyStartY = titleY + 16;
+    const descLines = (card.cLines || []).map((l, i) => `
+          <text data-detail="context" x="${cX + 14}" y="${bodyStartY + i * 13}" class="t-muted" font-size="7.5">${esc(l)}</text>`).join('');
+
+    return `
+          <!-- Card ${idx + 1} -->
+          <rect x="${cX}" y="${cY}" width="${colW}" height="${maxCardH}" rx="8" class="c-mask"/>
+          <rect x="${cX}" y="${cY}" width="${colW}" height="${maxCardH}" rx="8" class="c-external" stroke-width="1"/>
+          ${eyebrow}
+          <text x="${cX + 14}" y="${titleY}" class="t-primary" font-size="9" font-weight="700">${esc(card.title)}</text>
+          ${descLines}`;
+  }).join('');
+
+  return `        <!-- Comparison Grid Section -->
+        <g id="section-grid-${esc(sec.id || 'comparison')}">
+          ${numBadge}
+          ${descMarkup}
+          ${cardsMarkup}
+        </g>`;
+}
+
 const LEGEND_CATALOG = [
   'start', 'active', 'waiting', 'decision', 'success', 'failure', 'neutral', 'external',
 ].map((kind) => ({ kind, label: i18nText(explainer.meta.locale, `legend.explainer-steps.${kind}`) }));
 
 function renderLegend() {
+  if (hasSections) return ''; // Modular explainers use inline section keys
   const presentKinds = new Set([...steps.values()].map((step) => step.type));
   const entries = resolveLegend(explainer.meta?.legend, LEGEND_CATALOG, presentKinds);
   return renderResolvedLegend({
@@ -217,6 +578,36 @@ function renderLegend() {
 }
 
 function renderSvg() {
+  if (hasSections) {
+    const renderedSections = measuredSections.map((sec) => {
+      if (sec.kind === 'tldr') return renderTldrBlock(sec);
+      if (sec.kind === 'narrative') return renderNarrativeBlock(sec);
+      if (sec.kind === 'simulator') return renderSimulatorBlock(sec);
+      if (sec.kind === 'chart') return renderChartBlock(sec);
+      if (sec.kind === 'calculator') return renderCalculatorBlock(sec);
+      if (sec.kind === 'grid_cards') return renderGridCardsBlock(sec);
+      if (sec.kind === 'steps') {
+        const ordered = asArray(sec.items).map((item) => steps.get(item.id));
+        return ordered.map((step, idx) => renderStep(step, idx, ordered.length)).join('\n\n');
+      }
+      return '';
+    }).join('\n\n');
+
+    return `      <svg viewBox="0 0 ${viewBox[0]} ${viewBox[1]}" ${svgRootAttrs(explainer.meta, 'explorable visual explainer')}>
+${svgAccessibleText(explainer.meta, 'explainer-steps')}
+${renderDefinitions()}
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Topic Tags Header -->
+${renderTopicTagsHeader()}
+
+        <!-- Modular Explorable Sections -->
+${renderedSections}
+      </svg>`;
+  }
+
   const orderedSteps = asArray(explainer.steps).map((step) => steps.get(step.id));
   return `      <svg viewBox="0 0 ${viewBox[0]} ${viewBox[1]}" ${svgRootAttrs(explainer.meta, 'explainer steps diagram')}>
 ${svgAccessibleText(explainer.meta, 'explainer-steps')}
@@ -242,3 +633,4 @@ writeDiagram({
   svg: renderSvg(),
   cards: explainer.cards,
 });
+

@@ -136,14 +136,14 @@ Continue with focused requests such as `add Redis`, `move auth to the left`, or 
 
 ## Choose the right diagram
 
-| Type | Best for | Include in your prompt |
+| Type | Best for | Sample prompt |
 |---|---|---|
-| **Architecture** | Components, services, storage, boundaries | Scope, core components, primary path |
-| **Workflow** | CI/CD, approvals, tool calls, runbooks | Participants, order, branches, exceptions |
-| **Sequence** | API calls, cache fallback, auth, async traces | Callers, callees, returns, timing |
-| **Data Flow** | Pipelines, lineage, PII, consumers | Sources, transforms, stores, boundaries |
-| **Lifecycle** | States, retries, waits, terminal outcomes | States, events, retry and cancellation paths |
-| **Explainer Steps** | Algorithms, papers, AI/LLM architectures, math & code walkthroughs | Concept sequence, equations, code snippets, takeaways |
+| **Architecture** | Components, services, storage, boundaries | `"Map microservices backend with PostgreSQL, Redis cache, and Stripe"` |
+| **Workflow** | CI/CD, approvals, tool calls, runbooks | `"Create a CI/CD pipeline workflow with staging approval and rollback"` |
+| **Sequence** | API calls, cache fallback, auth, async traces | `"Show user login sequence with OAuth2 redirect, JWT refresh, and revocation"` |
+| **Data Flow** | Pipelines, lineage, PII, consumers | `"Map real-time analytics dataflow from Kafka through Flink to ClickHouse"` |
+| **Lifecycle** | States, retries, waits, terminal outcomes | `"Visualize background job lifecycle with retries, DLQ, and cancellation"` |
+| **Explainer Steps** | Algorithms, papers, AI/LLM models, code & math | `"Explain Attention mechanism step-by-step with formulas and tensor code"` |
 
 For a production deployment review, Architecture can optionally enable the
 `deployment-ownership` engineering profile. It fails closed when owners,
@@ -162,7 +162,6 @@ Not sure which one fits? Use the [interactive scenario guide](https://rajivmehta
 ```bash
 node diagramify/bin/diagramify.mjs guide "Show an API request with Redis cache miss"
 node diagramify/bin/diagramify.mjs guide "Map Kafka topics, consumer groups, replay, and DLQ" --json
-node diagramify/bin/diagramify.mjs guide "Explain Attention Mechanism with math and code" --json
 ```
 
 Workflow keeps the happy path clear across lanes:
@@ -181,37 +180,7 @@ Lifecycle separates progress, waits, retries, and terminal outcomes:
 
 ![Lifecycle example](docs/assets/archify-lifecycle.png)
 
-Explainer Steps walks through complex algorithms with math and code:
-
-[![Attention Mechanism visual explainer with formulas and code snippets](docs/assets/archify-lifecycle.png)](examples/explainer-steps-attention-mechanism.html)
-
-Architecture & concept examples: [`web-app`](examples/web-app.html) · [`Diagramify pipeline`](examples/archify-repo.html) · [`grid placement`](examples/archify-repo-grid.html) · [`desktop agent`](examples/maka-architecture.html) · [`Attention Mechanism`](examples/explainer-steps-attention-mechanism.html)
-
-## Sample prompt recipes
-
-Ask your AI coding assistant (Cursor, Claude Code, Codex, OpenCode) with ready-to-use prompt patterns:
-
-### 🎓 Explainer Steps (Papers, Algorithms & Architectures)
-> *"Explain the Multi-Head Attention mechanism step by step with query/key/value formulas and PyTorch tensor code snippets using diagramify explainer-steps."*
->
-> *"Create a visual explainer of the Raft consensus algorithm leader election phase with term states, RPC math, and timeout handling."*
-
-### 🏗️ Architecture & Systems
-> *"Use diagramify to map our microservices backend architecture including PostgreSQL, Redis cache, and Stripe gateway."*
->
-> *"Generate an architecture diagram for our Kubernetes production cluster with ingress, service mesh, and external cloud boundaries."*
-
-### 🔄 Workflow & CI/CD
-> *"Create a diagramify workflow diagram showing our GitOps CI/CD deployment pipeline with automated test gates, manual approval, and rollback triggers."*
-
-### ⏱️ Sequence & API Traces
-> *"Use diagramify sequence to show the complete user login flow with OAuth2 redirect, JWT refresh, and session revocation."*
-
-### 🌊 Data Flow & Pipelines
-> *"Map our real-time streaming analytics pipeline from Kafka topics through Apache Flink transformations to ClickHouse storage and Grafana dashboards."*
-
-### 🔄 Lifecycle & State Machines
-> *"Visualize our background job lifecycle including queued, running, exponential backoff retries, dead-letter queue, and cancellation states."*
+Architecture & concept examples: [`web-app`](examples/web-app.html) · [`Diagramify pipeline`](examples/archify-repo.html) · [`KV Cache`](examples/explainer-kv-cache.html) · [`Attention Mechanism`](examples/explainer-steps-attention-mechanism.html)
 
 ## Why Diagramify
 
@@ -248,11 +217,9 @@ node bin/diagramify.mjs preview workflow examples/agent-tool-call.workflow.json 
 node bin/diagramify.mjs deliver workflow examples/agent-tool-call.workflow.json /tmp/workflow.html --quality showcase --open --json
 ```
 
-`preview` is an explicit desktop authoring mode, not a default background service: it binds only to `127.0.0.1` on a random port, watches the one named JSON file, preserves the last verified output through failures, and stops with Ctrl-C. Add `--no-open` for tests or when you will open the printed local URL yourself. It adds no runtime to the generated HTML.
+`preview` is a desktop authoring mode: it binds to `127.0.0.1`, watches the named JSON file, preserves last verified output through failures, supports `--no-open`, and stops with Ctrl-C.
 
-Use `deliver --open` for a one-shot interactive local handoff. It is off by default, runs only after the verified artifact is committed, and never turns a successful delivery into a failure when the OS opener is unavailable; JSON stays on stdout and the absolute manual-open path goes to stderr.
-
-On failure, `validate --json` and `deliver --json` still emit exactly one JSON object. Read `diagnostics[]` and change only the named subject using its `supportedFixes`; do not rewrite the whole diagram or exceed the Skill's two focused correction rounds. Deterministic diagnostics remain separate from visual review.
+`deliver --open` performs a one-shot local handoff. On failure, `validate --json` and `deliver --json` emit structured `diagnostics[]` with exact `supportedFixes`. Deterministic diagnostics remain separate from visual review.
 
 Settings:
 
